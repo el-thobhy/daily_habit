@@ -1,9 +1,15 @@
 import 'package:daily_habit/core/theme/app_theme.dart';
+import 'package:daily_habit/data_model/habit_data_model.dart';
 import 'package:flutter/material.dart';
 
 class AddHabitSheet extends StatefulWidget {
-  const AddHabitSheet({super.key});
-
+  final HabitDataModel? habit; // null = create mode
+  final Function(Map<String, dynamic>) onSave;
+  const AddHabitSheet({
+    super.key,
+    this.habit,
+    required this.onSave,
+  });
   @override
   State<AddHabitSheet> createState() => _AddHabitSheetState();
 }
@@ -17,6 +23,24 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
 
   final List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+   void _save() {
+    if (_nameController.text.trim().isEmpty) return;
+    
+    widget.onSave({
+      'name': _nameController.text.trim(),
+      'emoji': _selectedEmoji,
+      'color': AppTheme.habitColors[_selectedColorIndex],
+      'frequency': _selectedDays,
+      'reminderTime': null, // Add time picker if needed
+      'targetCount': 1,
+      'unit': null,
+      'categoryId': null,
+    });
+    
+    Navigator.pop(context);
+  }
+
+  
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -251,7 +275,7 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
               child: ElevatedButton(
                 onPressed: () {
                   // Save habit logic
-                  Navigator.pop(context);
+                  _save();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,

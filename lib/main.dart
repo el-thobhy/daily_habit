@@ -1,9 +1,10 @@
 import 'package:daily_habit/core/theme/app_theme.dart';
+import 'package:daily_habit/data/services/hive_database.dart';
 import 'package:daily_habit/presentation/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -13,6 +14,9 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.dark
     ),
   );
+
+  await HiveDatabase().init();
+  
   runApp(const MyApp());
 }
 
