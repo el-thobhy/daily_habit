@@ -165,4 +165,10 @@ class HiveDatabase {
     await _habitsBox.clear();
     await _logsBox.clear();
   }
+  // lib/data/services/hive_database.dart
+
+  List<HabitLogModel?> getLogsForDate(DateTime date) {
+    final dateStr = _formatDate(date);
+    return _logsBox.values.where((log) => log.date == dateStr).toList();
+  }
 }

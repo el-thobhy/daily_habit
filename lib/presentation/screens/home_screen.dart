@@ -5,6 +5,7 @@ import 'package:daily_habit/data_model/habit_data_model.dart';
 import 'package:daily_habit/data_model/habit_log_model.dart';
 import 'package:daily_habit/presentation/screens/add_habbit_sheet.dart';
 import 'package:daily_habit/presentation/screens/stats_screen.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final HiveDatabase _db = HiveDatabase();
   final _uuid = const Uuid();
   
-  // Local state for UI - mirrors database
   List<HabitDataModel> _habits = [];
   Map<String, HabitLogModel?> _todayLogs = {};
   bool _isLoading = true;
@@ -33,16 +33,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  // ==================== DATA LOADING ====================
-
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
-    // Get habits for today based on frequency
     final habits = _db.getHabitsForToday();
     final today = DateTime.now();
     
-    // Get completion status for each habit
     final logs = <String, HabitLogModel?>{};
     for (final habit in habits) {
       logs[habit.id] = _db.getLogForDate(habit.id, today);
@@ -55,24 +51,19 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ==================== HABIT OPERATIONS ====================
-
   Future<void> _toggleHabit(String habitId) async {
     final today = DateTime.now();
     final currentLog = _todayLogs[habitId];
     final newCompleted = !(currentLog?.completed ?? false);
 
-    // Update database
     await _db.logHabit(
       habitId: habitId,
       completed: newCompleted,
       countValue: 1,
     );
 
-    // Recalculate streak
     final newStreak = _db.calculateStreak(habitId);
 
-    // Update local state for instant UI feedback
     setState(() {
       _todayLogs[habitId] = HabitLogModel(
         id: '${habitId}_${_formatDate(today)}',
@@ -85,14 +76,12 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     });
 
-    // Optional: Show streak celebration
     if (newCompleted && newStreak > 0 && newStreak % 7 == 0) {
       _showStreakCelebration(newStreak);
     }
   }
 
   Future<void> _deleteHabit(String habitId) async {
-    // Archive instead of hard delete (keeps history)
     await _db.archiveHabit(habitId);
     
     setState(() {
@@ -107,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () async {
-              // Restore by unarchiving
               final habit = _db.habitsBox.get(habitId);
               if (habit != null) {
                 habit.isArchived = false;
@@ -140,10 +128,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     await _db.createHabit(habit);
-    await _loadData(); // Refresh list
+    await _loadData();
   }
-
-  // ==================== UI HELPERS ====================
 
   void _showAddHabitSheet() {
     showModalBottomSheet(
@@ -218,15 +204,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // Get streak for display (calculated on demand or cached)
   int _getStreak(String habitId) {
     return _db.calculateStreak(habitId);
   }
 
-  // ==================== BUILD ====================
+  List<double> _getWeeklyCompletionData() {
+    final data = <double>[];
+    final now = DateTime.now();
+    
+    for (int i = 6; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final dayLogs = _db.getLogsForDate(date);
+      final completed = dayLogs.where((log) => log?.completed == true).length;
+      final total = _habits.where((h) => 
+        h.frequency.contains(date.weekday)
+      ).length;
+      
+      data.add(total > 0 ? (completed / total) * 100 : 0);
+    }
+    return data;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width > 600;
+    final isDesktop = size.width > 900;
+
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppTheme.background,
@@ -236,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final completedToday = _todayLogs.values.where((log) => log?.completed == true).length;
     final progress = _habits.isEmpty ? 0.0 : completedToday / _habits.length;
+    final weeklyData = _getWeeklyCompletionData();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -243,244 +248,556 @@ class _HomeScreenState extends State<HomeScreen> {
         child: RefreshIndicator(
           onRefresh: _loadData,
           color: AppTheme.primary,
-          child: CustomScrollView(
-            slivers: [
-              // Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'My Habits',
-                                style: Theme.of(context).textTheme.displayMedium,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _getGreeting(),
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
-                          ),
-                          GestureDetector(
-                            onTap: _showAddHabitSheet,
-                            child: Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.primary.withOpacity(0.3),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Desktop/Tablet Layout - Use CustomScrollView with slivers
+              if (isDesktop || isTablet) {
+                return Row(
+                  children: [
+                    // Left Panel - Fixed width, scrollable content
+                    SizedBox(
+                      width: isDesktop ? 400 : 320,
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(isTablet: true),
+                                  const SizedBox(height: 32),
+                                  _buildProgressCard(
+                                    completedToday: completedToday,
+                                    progress: progress,
+                                    isTablet: true,
                                   ),
+                                  const SizedBox(height: 24),
+                                  _buildWeeklyChart(weeklyData, isTablet: true),
+                                  const SizedBox(height: 24),
+                                  _buildQuickStats(),
+                                  const SizedBox(height: 24),
                                 ],
-                              ),
-                              child: const Icon(
-                                Icons.add_rounded,
-                                color: Colors.white,
-                                size: 28,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      
-                      // Daily Progress Card
-                      Container(
-                        padding: const EdgeInsets.all(20),
+                    ),
+                    
+                    // Right Panel - Habits List
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.only(
+                          top: 24,
+                          right: 24,
+                          bottom: 24,
+                        ),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.primary,
-                              AppTheme.primaryLight,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: AppTheme.cardShadow,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(32),
+                          child: _habits.isEmpty
+                              ? _buildEmptyState(isTablet: true)
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(24),
+                                  itemCount: _habits.length,
+                                  itemBuilder: (context, index) {
+                                    final habit = _habits[index];
+                                    final log = _todayLogs[habit.id];
+                                    final isCompleted = log?.completed ?? false;
+                                    final streak = _getStreak(habit.id);
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 16),
+                                      child: HabitCard(
+                                        id: habit.id,
+                                        name: habit.name,
+                                        emoji: habit.emoji,
+                                        color: Color(habit.colorValue),
+                                        streak: streak,
+                                        isCompleted: isCompleted,
+                                        onToggle: () => _toggleHabit(habit.id),
+                                        onEdit: () => _showEditHabitSheet(habit),
+                                        onDelete: () => _deleteHabit(habit.id),
+                                      ),
+                                    ).animate(delay: (index * 50).ms).fadeIn().slideX();
+                                  },
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              // Mobile Layout - Use CustomScrollView throughout
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(isTablet: false),
+                          const SizedBox(height: 20),
+                          _buildProgressCard(
+                            completedToday: completedToday,
+                            progress: progress,
+                            isTablet: false,
                           ),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primary.withOpacity(0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                          const SizedBox(height: 20),
+                          _buildWeeklyChart(weeklyData, isTablet: false),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Empty state or list as sliver
+                  _habits.isEmpty
+                      ? SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _buildEmptyState(isTablet: false),
+                        )
+                      : SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final habit = _habits[index];
+                                final log = _todayLogs[habit.id];
+                                final isCompleted = log?.completed ?? false;
+                                final streak = _getStreak(habit.id);
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: HabitCard(
+                                    id: habit.id,
+                                    name: habit.name,
+                                    emoji: habit.emoji,
+                                    color: Color(habit.colorValue),
+                                    streak: streak,
+                                    isCompleted: isCompleted,
+                                    onToggle: () => _toggleHabit(habit.id),
+                                    onEdit: () => _showEditHabitSheet(habit),
+                                    onDelete: () => _deleteHabit(habit.id),
+                                  ),
+                                ).animate(delay: (index * 100).ms).fadeIn().slideY(
+                                      begin: 0.2,
+                                      end: 0,
+                                      duration: 400.ms,
+                                      curve: Curves.easeOutQuart,
+                                    );
+                              },
+                              childCount: _habits.length,
                             ),
-                          ],
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Daily Progress',
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    '$completedToday/${_habits.length}',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Colors.white.withOpacity(0.2),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                                minHeight: 8,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _getMotivationalMessage(progress),
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                  const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+      bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
+    );
+  }
+
+  Widget _buildEmptyState({required bool isTablet}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('🎯', style: TextStyle(fontSize: 64)),
+          const SizedBox(height: 16),
+          Text(
+            'No habits for today',
+            style: isTablet 
+                ? Theme.of(context).textTheme.displayMedium
+                : Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap + to create your first habit',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader({required bool isTablet}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'My Habits',
+              style: isTablet 
+                  ? Theme.of(context).textTheme.displayLarge
+                  : Theme.of(context).textTheme.displayMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _getGreeting(),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: isTablet ? 16 : 14,
+                  ),
+            ),
+          ],
+        ),
+        GestureDetector(
+          onTap: _showAddHabitSheet,
+          child: Container(
+            width: isTablet ? 64 : 56,
+            height: isTablet ? 64 : 56,
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.add_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressCard({
+    required int completedToday,
+    required double progress,
+    required bool isTablet,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 28 : 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primary,
+            AppTheme.primaryLight,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(isTablet ? 32 : 24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Daily Progress',
+                style: GoogleFonts.inter(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: isTablet ? 16 : 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$completedToday/${_habits.length}',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withOpacity(0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              minHeight: isTablet ? 12 : 8,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _getMotivationalMessage(progress),
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: isTablet ? 20 : 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyChart(List<double> data, {required bool isTablet}) {
+    if (_habits.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Last 7 Days',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontSize: isTablet ? 18 : 16,
+                    ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StatsScreen()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'See All',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primary,
                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 12,
+                        color: AppTheme.primary,
                       ),
                     ],
                   ),
                 ),
               ),
-
-              // Empty State
-              if (_habits.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('🎯', style: TextStyle(fontSize: 64)),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No habits for today',
-                          style: Theme.of(context).textTheme.titleLarge,
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: isTablet ? 120 : 80,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: 100,
+                minY: 0,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: AppTheme.textPrimary,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                      final dayIndex = (DateTime.now().weekday + groupIndex - 6) % 7;
+                      return BarTooltipItem(
+                        '${days[dayIndex]}\n${rod.toY.round()}%',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Tap + to create your first habit',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
-
-              // Habits List
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final habit = _habits[index];
-                    final log = _todayLogs[habit.id];
-                    final isCompleted = log?.completed ?? false;
-                    final streak = _getStreak(habit.id);
-
-                    return HabitCard(
-                      id: habit.id,
-                      name: habit.name,
-                      emoji: habit.emoji,
-                      color: Color(habit.colorValue),
-                      streak: streak,
-                      isCompleted: isCompleted,
-                      onToggle: () => _toggleHabit(habit.id),
-                      onEdit: () => _showEditHabitSheet(habit),
-                      onDelete: () => _deleteHabit(habit.id),
-                    ).animate(delay: (index * 100).ms).fadeIn().slideY(
-                          begin: 0.2,
-                          end: 0,
-                          duration: 400.ms,
-                          curve: Curves.easeOutQuart,
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 24,
+                      getTitlesWidget: (value, meta) {
+                        const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                        final dayIndex = (DateTime.now().weekday + value.toInt() - 6) % 7;
+                        final isToday = value.toInt() == 6;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            days[dayIndex],
+                            style: TextStyle(
+                              color: isToday ? AppTheme.primary : AppTheme.textSecondary,
+                              fontSize: isTablet ? 12 : 10,
+                              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
                         );
-                  },
-                  childCount: _habits.length,
+                      },
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                 ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(7, (index) {
+                  final isToday = index == 6;
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: data[index],
+                        color: isToday 
+                            ? AppTheme.primary 
+                            : AppTheme.primary.withOpacity(0.3),
+                        width: isTablet ? 16 : 12,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  );
+                }),
               ),
-
-              // Bottom padding for nav bar
-              const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(20),
+    ).animate().fadeIn();
+  }
+
+  Widget _buildQuickStats() {
+    final totalHabits = _db.getAllHabits().length;
+    final activeStreaks = _habits.where((h) => _getStreak(h.id) > 0).length;
+
+    return Row(
+      children: [
+        _buildStatItem('Total', '$totalHabits', Icons.folder_outlined),
+        const SizedBox(width: 12),
+        _buildStatItem('Active', '$activeStreaks', Icons.local_fire_department_outlined),
+        const SizedBox(width: 12),
+        _buildStatItem('Today', '${_habits.length}', Icons.today_outlined),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: AppTheme.elevatedShadow,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppTheme.cardShadow,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) {
-              if (index == 1) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StatsScreen()),
-                );
-              } else {
-                setState(() => _selectedIndex = index);
-              }
-            },
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: AppTheme.primary,
-            unselectedItemColor: AppTheme.textSecondary,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded),
-                label: 'Home',
+        child: Column(
+          children: [
+            Icon(icon, color: AppTheme.primary, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart_rounded),
-                label: 'Stats',
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary.withOpacity(0.8),
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_rounded),
-                label: 'Settings',
-              ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppTheme.elevatedShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            if (index == 1) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StatsScreen()),
+              );
+            } else {
+              setState(() => _selectedIndex = index);
+            }
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: AppTheme.primary,
+          unselectedItemColor: AppTheme.textSecondary,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart_rounded),
+              label: 'Stats',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_rounded),
+              label: 'Settings',
+            ),
+          ],
         ),
       ),
     );
