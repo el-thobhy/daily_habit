@@ -6,11 +6,21 @@ import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_li
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_state.dart';
 import 'package:daily_habit/features/habit/presentation/pages/stats_page.dart';
 import 'package:daily_habit/features/habit/presentation/widgets/add_habit_sheet.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:daily_habit/features/planner/domain/entities/daily_reflection_entity.dart';
+import 'package:daily_habit/features/planner/domain/entities/planner_task_entity.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_bloc.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_event.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_state.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_bloc.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_event.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_state.dart';
+import 'package:daily_habit/features/planner/presentation/widgets/add_planner_task_sheet.dart';
+import 'package:daily_habit/features/planner/presentation/widgets/calendar_header_widget.dart';
+import 'package:daily_habit/features/planner/presentation/widgets/daily_reflection_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 class HomePage extends StatefulWidget {
@@ -22,12 +32,26 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  DateTime _selectedDate = DateTime.now();
   final _uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
+    _loadDataForSelectedDate(_selectedDate);
+  }
+
+  void _loadDataForSelectedDate(DateTime date) {
     context.read<HabitListBloc>().add(LoadTodayHabitsEvent());
+    context.read<PlannerBloc>().add(LoadPlannerTasksForDate(date));
+    context.read<ReflectionBloc>().add(LoadReflectionForDate(date));
+  }
+
+  void _onDateSelected(DateTime date) {
+    setState(() {
+      _selectedDate = date;
+    });
+    _loadDataForSelectedDate(date);
   }
 
   void _showAddHabitSheet() {
@@ -81,356 +105,298 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showStreakCelebration(String message) {
-    showDialog(
+  void _showAddPlannerTaskSheet() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('🔥', style: TextStyle(fontSize: 64)),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.displayMedium,
-            ),
-            const SizedBox(height: 8),
-            const Text('You\'re on fire! Keep it up!'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Awesome!'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddPlannerTaskSheet(
+        selectedDate: _selectedDate,
+        onTaskAdded: (task) {
+          context.read<PlannerBloc>().add(AddPlannerTaskEvent(task));
+        },
+      ),
+    );
+  }
+
+  void _showReflectionSheet(DailyReflectionEntity? existing) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DailyReflectionSheet(
+        date: _selectedDate,
+        existingReflection: existing,
+        onSave: (reflection) {
+          context.read<ReflectionBloc>().add(SaveReflectionEvent(reflection));
+        },
       ),
     );
   }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning ☀️';
-    if (hour < 17) return 'Good Afternoon 🌤️';
-    return 'Good Evening 🌙';
-  }
-
-  String _getMotivationalMessage(double progress) {
-    if (progress == 0) return 'Let\'s get started!';
-    if (progress < 0.5) return 'Off to a good start!';
-    if (progress < 1.0) return 'More than halfway there!';
-    return 'All habits completed today! 🎉';
+    if (hour < 12) return 'Selamat Pagi ☀️';
+    if (hour < 17) return 'Selamat Siang 🌤️';
+    return 'Selamat Malam 🌙';
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.width > 600;
-    final isDesktop = size.width > 900;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 900;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: BlocConsumer<HabitListBloc, HabitListState>(
-          listener: (context, state) {
-            if (state is HabitListLoaded && state.celebrationMessage != null) {
-              _showStreakCelebration(state.celebrationMessage!);
-            }
-          },
-          builder: (context, state) {
-            if (state is HabitListLoading || state is HabitListInitial) {
-              return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-            }
-
-            if (state is HabitListError) {
-              return Center(
-                child: Text('Error: ${state.message}'),
-              );
-            }
-
-            final loadedState = state as HabitListLoaded;
-            final habits = loadedState.habits;
-            final todayLogs = loadedState.todayLogs;
-            final streaks = loadedState.streaks;
-            final weeklyData = loadedState.weeklyCompletionData;
-
-            final completedToday = todayLogs.values.where((log) => log?.completed == true).length;
-            final progress = habits.isEmpty ? 0.0 : completedToday / habits.length;
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<HabitListBloc>().add(LoadTodayHabitsEvent());
-              },
-              color: AppTheme.primary,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  if (isDesktop || isTablet) {
-                    return Row(
-                      children: [
-                        SizedBox(
-                          width: isDesktop ? 400 : 320,
-                          child: CustomScrollView(
-                            slivers: [
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildHeader(isTablet: true),
-                                      const SizedBox(height: 32),
-                                      _buildProgressCard(
-                                        completedToday: completedToday,
-                                        totalHabits: habits.length,
-                                        progress: progress,
-                                        isTablet: true,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      _buildWeeklyChart(weeklyData, isTablet: true, habitsCount: habits.length),
-                                      const SizedBox(height: 24),
-                                      _buildQuickStats(totalHabitsCount: habits.length, activeStreaksCount: streaks.values.where((s) => s > 0).length, todayHabitsCount: habits.length),
-                                      const SizedBox(height: 24),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(
-                              top: 24,
-                              right: 24,
-                              bottom: 24,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surface,
-                              borderRadius: BorderRadius.circular(32),
-                              boxShadow: AppTheme.cardShadow,
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(32),
-                              child: habits.isEmpty
-                                  ? _buildEmptyState(isTablet: true)
-                                  : ListView.builder(
-                                      padding: const EdgeInsets.all(24),
-                                      itemCount: habits.length,
-                                      itemBuilder: (context, index) {
-                                        final habit = habits[index];
-                                        final log = todayLogs[habit.id];
-                                        final isCompleted = log?.completed ?? false;
-                                        final streak = streaks[habit.id] ?? 0;
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 16),
-                                          child: HabitCard(
-                                            id: habit.id,
-                                            name: habit.name,
-                                            emoji: habit.emoji,
-                                            color: Color(habit.colorValue),
-                                            streak: streak,
-                                            isCompleted: isCompleted,
-                                            onToggle: () {
-                                              context.read<HabitListBloc>().add(
-                                                    ToggleHabitCompletionEvent(habit.id),
-                                                  );
-                                            },
-                                            onEdit: () => _showEditHabitSheet(habit),
-                                            onDelete: () {
-                                              context.read<HabitListBloc>().add(
-                                                    ArchiveHabitEvent(habit.id),
-                                                  );
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: const Text('Habit archived'),
-                                                  action: SnackBarAction(
-                                                    label: 'Undo',
-                                                    onPressed: () {
-                                                      context.read<HabitListBloc>().add(
-                                                            UnarchiveHabitEvent(habit.id),
-                                                          );
-                                                    },
-                                                  ),
-                                                  behavior: SnackBarBehavior.floating,
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ).animate(delay: (index * 50).ms).fadeIn().slideX();
-                                      },
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildHeader(isTablet: false),
-                              const SizedBox(height: 20),
-                              _buildProgressCard(
-                                completedToday: completedToday,
-                                totalHabits: habits.length,
-                                progress: progress,
-                                isTablet: false,
-                              ),
-                              const SizedBox(height: 20),
-                              _buildWeeklyChart(weeklyData, isTablet: false, habitsCount: habits.length),
-                            ],
-                          ),
-                        ),
-                      ),
-                      habits.isEmpty
-                          ? SliverFillRemaining(
-                              hasScrollBody: false,
-                              child: _buildEmptyState(isTablet: false),
-                            )
-                          : SliverPadding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    final habit = habits[index];
-                                    final log = todayLogs[habit.id];
-                                    final isCompleted = log?.completed ?? false;
-                                    final streak = streaks[habit.id] ?? 0;
-
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 16),
-                                      child: HabitCard(
-                                        id: habit.id,
-                                        name: habit.name,
-                                        emoji: habit.emoji,
-                                        color: Color(habit.colorValue),
-                                        streak: streak,
-                                        isCompleted: isCompleted,
-                                        onToggle: () {
-                                          context.read<HabitListBloc>().add(
-                                                ToggleHabitCompletionEvent(habit.id),
-                                              );
-                                        },
-                                        onEdit: () => _showEditHabitSheet(habit),
-                                        onDelete: () {
-                                          context.read<HabitListBloc>().add(
-                                                ArchiveHabitEvent(habit.id),
-                                              );
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: const Text('Habit archived'),
-                                              action: SnackBarAction(
-                                                label: 'Undo',
-                                                onPressed: () {
-                                                  context.read<HabitListBloc>().add(
-                                                        UnarchiveHabitEvent(habit.id),
-                                                      );
-                                                },
-                                              ),
-                                              behavior: SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ).animate(delay: (index * 100).ms).fadeIn().slideY(
-                                          begin: 0.2,
-                                          end: 0,
-                                          duration: 400.ms,
-                                          curve: Curves.easeOutQuart,
-                                        );
-                                  },
-                                  childCount: habits.length,
-                                ),
-                              ),
-                            ),
-                      const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-                    ],
-                  );
-                },
+        child: Row(
+          children: [
+            if (isDesktop) _buildSidebarNav(),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  _buildPlannerTab(),
+                  _buildHabitsTab(),
+                  const StatsPage(),
+                ],
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
     );
   }
 
-  Widget _buildEmptyState({required bool isTablet}) {
-    return Center(
+  // --- DESKTOP SIDEBAR NAVIGATION ---
+  Widget _buildSidebarNav() {
+    return Container(
+      width: 240,
+      color: AppTheme.surface,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🎯', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          Text(
-            'No habits for today',
-            style: isTablet
-                ? Theme.of(context).textTheme.displayMedium
-                : Theme.of(context).textTheme.titleLarge,
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.auto_awesome, color: AppTheme.primary, size: 28),
+              const SizedBox(width: 10),
+              Text(
+                'Daily Planner',
+                style: AppTheme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap + to create your first habit',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          const SizedBox(height: 40),
+          _buildSidebarItem(0, Icons.calendar_today_rounded, 'Planner & Reflection'),
+          _buildSidebarItem(1, Icons.check_circle_outline_rounded, 'Kelola Habits'),
+          _buildSidebarItem(2, Icons.insights_rounded, 'Stats & Analysis'),
         ],
       ),
     );
   }
 
-  Widget _buildHeader({required bool isTablet}) {
+  Widget _buildSidebarItem(int index, IconData icon, String label) {
+    final isSelected = _selectedIndex == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: InkWell(
+        onTap: () => setState(() => _selectedIndex = index),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primary.withValues(alpha: 0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: isSelected ? AppTheme.primary : AppTheme.textSecondary, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- TAB 1: DAILY PLANNER & REFLECTIONS ---
+  Widget _buildPlannerTab() {
+    final formattedDate = DateFormat('EEEE, d MMMM yyyy').format(_selectedDate);
+    final width = MediaQuery.of(context).size.width;
+    final isWideScreen = width > 768;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        _loadDataForSelectedDate(_selectedDate);
+      },
+      color: AppTheme.primary,
+      child: isWideScreen
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderSection(formattedDate),
+                      const SizedBox(height: 20),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Column: Calendar & Reflections
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              children: [
+                                CalendarHeaderWidget(
+                                  selectedDay: _selectedDate,
+                                  onDaySelected: _onDateSelected,
+                                ),
+                                const SizedBox(height: 20),
+                                _buildReflectionCard(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Right Column: Habits & Tasks
+                          Expanded(
+                            flex: 6,
+                            child: Column(
+                              children: [
+                                _buildHabitSectionHeader(),
+                                const SizedBox(height: 12),
+                                _buildHabitsListContent(),
+                                const SizedBox(height: 24),
+                                _buildTaskSectionHeader(),
+                                const SizedBox(height: 12),
+                                _buildTasksListContent(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeaderSection(formattedDate),
+                        const SizedBox(height: 12),
+                        CalendarHeaderWidget(
+                          selectedDay: _selectedDate,
+                          onDaySelected: _onDateSelected,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildHabitSectionHeader(),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  sliver: _buildHabitsListSliver(),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildTaskSectionHeader(),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  sliver: _buildTasksListSliver(),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.menu_book_rounded, color: AppTheme.warning, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Pelajaran & Refleksi Hari Ini',
+                          style: AppTheme.textTheme.titleLarge,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildReflectionCard(),
+                  ),
+                ),
+                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildHeaderSection(String formattedDate) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'My Habits',
-              style: isTablet
-                  ? Theme.of(context).textTheme.displayLarge
-                  : Theme.of(context).textTheme.displayMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _getGreeting(),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: isTablet ? 16 : 14,
-                  ),
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Daily Planner',
+                style: AppTheme.textTheme.displayMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _getGreeting(),
+                style: AppTheme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
-        GestureDetector(
-          onTap: _showAddHabitSheet,
-          child: Container(
-            width: isTablet ? 64 : 56,
-            height: isTablet ? 64 : 56,
-            decoration: BoxDecoration(
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            formattedDate,
+            style: const TextStyle(
               color: AppTheme.primary,
-              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.add_rounded,
-              color: Colors.white,
-              size: 28,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
           ),
         ),
@@ -438,289 +404,517 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProgressCard({
-    required int completedToday,
-    required int totalHabits,
-    required double progress,
-    required bool isTablet,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(isTablet ? 28 : 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.primary,
-            AppTheme.primaryLight,
+  Widget _buildHabitSectionHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.repeat, color: AppTheme.primary, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Habit Tetap Harian',
+              style: AppTheme.textTheme.titleLarge,
+            ),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(isTablet ? 32 : 24),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Daily Progress',
-                style: GoogleFonts.inter(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: isTablet ? 16 : 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$completedToday/$totalHabits',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              minHeight: isTablet ? 12 : 8,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _getMotivationalMessage(progress),
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: isTablet ? 20 : 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+        TextButton.icon(
+          onPressed: _showAddHabitSheet,
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Habit'),
+        ),
+      ],
     );
   }
 
-  Widget _buildWeeklyChart(List<double> data, {required bool isTablet, required int habitsCount}) {
-    if (habitsCount == 0) return const SizedBox.shrink();
-
-    return Container(
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Last 7 Days',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: isTablet ? 18 : 16,
-                    ),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StatsPage()),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'See All',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 12,
-                        color: AppTheme.primary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildTaskSectionHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.task_alt, color: AppTheme.success, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Agenda & Task',
+              style: AppTheme.textTheme.titleLarge,
+            ),
+          ],
+        ),
+        ElevatedButton.icon(
+          onPressed: _showAddPlannerTaskSheet,
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Tambah Task'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: isTablet ? 120 : 80,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                minY: 0,
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: AppTheme.textPrimary,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                      final dayIndex = (DateTime.now().weekday + groupIndex - 6) % 7;
-                      return BarTooltipItem(
-                        '${days[dayIndex]}\n${rod.toY.round()}%',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      );
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHabitsListContent() {
+    return BlocBuilder<HabitListBloc, HabitListState>(
+      builder: (context, state) {
+        if (state is HabitListLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state is HabitListLoaded) {
+          final habits = state.habits;
+          if (habits.isEmpty) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'Belum ada habit harian. Tambahkan habit tetap Anda.',
+                style: AppTheme.textTheme.bodyMedium,
+              ),
+            );
+          }
+          return Column(
+            children: habits.map((habit) {
+              final isCompleted = state.todayLogs[habit.id]?.completed ?? false;
+              final streak = state.streaks[habit.id] ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: HabitCard(
+                  id: habit.id,
+                  name: habit.name,
+                  emoji: habit.emoji,
+                  color: Color(habit.colorValue),
+                  streak: streak,
+                  isCompleted: isCompleted,
+                  onToggle: () {
+                    context.read<HabitListBloc>().add(
+                          ToggleHabitCompletionEvent(habit.id),
+                        );
+                  },
+                ),
+              );
+            }).toList(),
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildHabitsListSliver() {
+    return BlocBuilder<HabitListBloc, HabitListState>(
+      builder: (context, state) {
+        if (state is HabitListLoading) {
+          return const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        if (state is HabitListLoaded) {
+          final habits = state.habits;
+          if (habits.isEmpty) {
+            return SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Belum ada habit harian. Tambahkan habit tetap Anda.',
+                  style: AppTheme.textTheme.bodyMedium,
+                ),
+              ),
+            );
+          }
+          return SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final habit = habits[index];
+                final isCompleted = state.todayLogs[habit.id]?.completed ?? false;
+                final streak = state.streaks[habit.id] ?? 0;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: HabitCard(
+                    id: habit.id,
+                    name: habit.name,
+                    emoji: habit.emoji,
+                    color: Color(habit.colorValue),
+                    streak: streak,
+                    isCompleted: isCompleted,
+                    onToggle: () {
+                      context.read<HabitListBloc>().add(
+                            ToggleHabitCompletionEvent(habit.id),
+                          );
                     },
                   ),
+                );
+              },
+              childCount: habits.length,
+            ),
+          );
+        }
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+      },
+    );
+  }
+
+  Widget _buildTasksListContent() {
+    return BlocBuilder<PlannerBloc, PlannerState>(
+      builder: (context, state) {
+        if (state is PlannerLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state is PlannerLoaded) {
+          final tasks = state.tasks;
+          if (tasks.isEmpty) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.event_note, size: 40, color: AppTheme.textSecondary),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Belum ada aktivitas khusus untuk tanggal ini',
+                    style: AppTheme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            );
+          }
+          return Column(
+            children: tasks.map((task) => _buildTaskTile(task)).toList(),
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildTasksListSliver() {
+    return BlocBuilder<PlannerBloc, PlannerState>(
+      builder: (context, state) {
+        if (state is PlannerLoading) {
+          return const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        if (state is PlannerLoaded) {
+          final tasks = state.tasks;
+          if (tasks.isEmpty) {
+            return SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.border),
                 ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      getTitlesWidget: (value, meta) {
-                        const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-                        final dayIndex = (DateTime.now().weekday + value.toInt() - 6) % 7;
-                        final isToday = value.toInt() == 6;
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            days[dayIndex],
-                            style: TextStyle(
-                              color: isToday ? AppTheme.primary : AppTheme.textSecondary,
-                              fontSize: isTablet ? 12 : 10,
-                              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        );
-                      },
+                child: Column(
+                  children: [
+                    const Icon(Icons.event_note, size: 40, color: AppTheme.textSecondary),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Belum ada aktivitas khusus untuk tanggal ini',
+                      style: AppTheme.textTheme.bodyMedium,
                     ),
-                  ),
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  ],
                 ),
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(7, (index) {
-                  final isToday = index == 6;
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: data[index],
-                        color: isToday
-                            ? AppTheme.primary
-                            : AppTheme.primary.withOpacity(0.3),
-                        width: isTablet ? 16 : 12,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ],
-                  );
-                }),
+              ),
+            );
+          }
+          return SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final task = tasks[index];
+                return _buildTaskTile(task);
+              },
+              childCount: tasks.length,
+            ),
+          );
+        }
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+      },
+    );
+  }
+
+  Widget _buildReflectionCard() {
+    return BlocBuilder<ReflectionBloc, ReflectionState>(
+      builder: (context, state) {
+        DailyReflectionEntity? reflection;
+        if (state is ReflectionLoaded) {
+          reflection = state.reflection;
+        }
+
+        final hasContent = reflection != null &&
+            (reflection.todayLesson.isNotEmpty || reflection.memorableNotes.isNotEmpty);
+
+        return GestureDetector(
+          onTap: () => _showReflectionSheet(reflection),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.surface,
+                  AppTheme.background,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AppTheme.cardShadow,
+              border: Border.all(
+                color: hasContent ? AppTheme.primaryLight : AppTheme.border,
+                width: hasContent ? 1.5 : 1.0,
               ),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '💡 Learning Everyday',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.edit_note_rounded,
+                      color: AppTheme.primary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (!hasContent) ...[
+                  Text(
+                    'Belum ada catatan refleksi atau pelajaran untuk hari ini.',
+                    style: AppTheme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Klik di sini untuk menulis pelajaran & momen berkesan hari ini ✨',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ] else ...[
+                  if (reflection.todayLesson.isNotEmpty) ...[
+                    Text(
+                      'Pelajaran Hari Ini:',
+                      style: AppTheme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      reflection.todayLesson,
+                      style: AppTheme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (reflection.memorableNotes.isNotEmpty) ...[
+                    Text(
+                      'Catatan Berkesan:',
+                      style: AppTheme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      reflection.memorableNotes,
+                      style: AppTheme.textTheme.bodyMedium,
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTaskTile(PlannerTaskEntity task) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: task.isCompleted,
+            activeColor: AppTheme.success,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            onChanged: (_) {
+              context.read<PlannerBloc>().add(TogglePlannerTaskEvent(task));
+            },
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                    color: task.isCompleted ? AppTheme.textSecondary : AppTheme.textPrimary,
+                  ),
+                ),
+                if (task.description != null && task.description!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    task.description!,
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (task.timeString != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.background,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                task.timeString!,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.danger),
+            onPressed: () {
+              context.read<PlannerBloc>().add(
+                    DeletePlannerTaskEvent(taskId: task.id, currentDate: _selectedDate),
+                  );
+            },
           ),
         ],
       ),
-    ).animate().fadeIn();
-  }
-
-  Widget _buildQuickStats({
-    required int totalHabitsCount,
-    required int activeStreaksCount,
-    required int todayHabitsCount,
-  }) {
-    return Row(
-      children: [
-        _buildStatItem('Total', '$totalHabitsCount', Icons.folder_outlined),
-        const SizedBox(width: 12),
-        _buildStatItem('Active', '$activeStreaksCount', Icons.local_fire_department_outlined),
-        const SizedBox(width: 12),
-        _buildStatItem('Today', '$todayHabitsCount', Icons.today_outlined),
-      ],
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppTheme.cardShadow,
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: AppTheme.primary, size: 20),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+  // --- TAB 2: HABITS MANAGER ---
+  Widget _buildHabitsTab() {
+    return BlocBuilder<HabitListBloc, HabitListState>(
+      builder: (context, state) {
+        if (state is HabitListLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state is HabitListLoaded) {
+          final habits = state.habits;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Kelola Habit Harian',
+                        style: AppTheme.textTheme.displayMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _showAddHabitSheet,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tambah Habit'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary.withOpacity(0.8),
+              Expanded(
+                child: habits.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Belum ada habit',
+                          style: AppTheme.textTheme.bodyMedium,
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 100),
+                        itemCount: habits.length,
+                        itemBuilder: (context, index) {
+                          final habit = habits[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: HabitCard(
+                              id: habit.id,
+                              name: habit.name,
+                              emoji: habit.emoji,
+                              color: Color(habit.colorValue),
+                              streak: state.streaks[habit.id] ?? 0,
+                              isCompleted: state.todayLogs[habit.id]?.completed ?? false,
+                              onToggle: () {
+                                context.read<HabitListBloc>().add(
+                                      ToggleHabitCompletionEvent(habit.id),
+                                    );
+                              },
+                              onEdit: () => _showEditHabitSheet(habit),
+                              onDelete: () {
+                                context.read<HabitListBloc>().add(
+                                      ArchiveHabitEvent(habit.id),
+                                    );
+                              },
+                            ),
+                          );
+                        },
+                      ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 
+  // --- BOTTOM NAVIGATION BAR ---
   Widget _buildBottomNav() {
     return Container(
-      margin: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -731,14 +925,7 @@ class _HomePageState extends State<HomePage> {
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (index) {
-            if (index == 1) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const StatsPage()),
-              );
-            } else {
-              setState(() => _selectedIndex = index);
-            }
+            setState(() => _selectedIndex = index);
           },
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -747,16 +934,16 @@ class _HomePageState extends State<HomePage> {
           type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Home',
+              icon: Icon(Icons.calendar_today_rounded),
+              label: 'Planner',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded),
+              icon: Icon(Icons.check_circle_outline_rounded),
+              label: 'Habits',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.insights_rounded),
               label: 'Stats',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_rounded),
-              label: 'Settings',
             ),
           ],
         ),

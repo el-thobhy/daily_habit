@@ -12,8 +12,8 @@ class HabitCard extends StatelessWidget {
   final int streak;
   final bool isCompleted;
   final VoidCallback onToggle;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const HabitCard({
     super.key,
@@ -24,42 +24,45 @@ class HabitCard extends StatelessWidget {
     required this.streak,
     required this.isCompleted,
     required this.onToggle,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
+
   @override
   Widget build(BuildContext context) {
-     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Slidable(
         key: ValueKey(id),
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          extentRatio: 0.25,
-          children: [
-            CustomSlidableAction(
-              onPressed: (_) => onDelete(),
-              backgroundColor: AppTheme.danger,
-              foregroundColor: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              padding: const EdgeInsets.only(left: 8),
-              child: const Icon(Icons.delete_outline, size: 24),
-            ),
-          ],
-        ),
+        endActionPane: onDelete != null
+            ? ActionPane(
+                motion: const ScrollMotion(),
+                extentRatio: 0.25,
+                children: [
+                  CustomSlidableAction(
+                    onPressed: (_) => onDelete!(),
+                    backgroundColor: AppTheme.danger,
+                    foregroundColor: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: const Icon(Icons.delete_outline, size: 24),
+                  ),
+                ],
+              )
+            : null,
         child: GestureDetector(
           onLongPress: onEdit,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             decoration: BoxDecoration(
-              color: isCompleted 
-                  ? color.withOpacity(0.08) 
+              color: isCompleted
+                  ? color.withOpacity(0.08)
                   : AppTheme.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isCompleted 
-                    ? color.withOpacity(0.2) 
+                color: isCompleted
+                    ? color.withOpacity(0.2)
                     : AppTheme.border,
                 width: 1.5,
               ),
@@ -69,7 +72,6 @@ class HabitCard extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Emoji Icon
                   Container(
                     width: 52,
                     height: 52,
@@ -85,8 +87,6 @@ class HabitCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  
-                  // Content
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,11 +96,11 @@ class HabitCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: isCompleted 
-                                ? AppTheme.textSecondary 
+                            color: isCompleted
+                                ? AppTheme.textSecondary
                                 : AppTheme.textPrimary,
-                            decoration: isCompleted 
-                                ? TextDecoration.lineThrough 
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
                                 : null,
                           ),
                         ),
@@ -112,8 +112,6 @@ class HabitCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
-                  // Check Button
                   AnimatedCheckButton(
                     isCompleted: isCompleted,
                     onTap: onToggle,

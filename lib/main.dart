@@ -2,6 +2,8 @@ import 'package:daily_habit/core/di/injection_container.dart';
 import 'package:daily_habit/core/theme/app_theme.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
 import 'package:daily_habit/features/habit/presentation/pages/home_page.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_bloc.dart';
+import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,9 +34,15 @@ class MyApp extends StatelessWidget {
         BlocProvider<HabitListBloc>(
           create: (_) => sl<HabitListBloc>(),
         ),
+        BlocProvider<PlannerBloc>(
+          create: (_) => sl<PlannerBloc>(),
+        ),
+        BlocProvider<ReflectionBloc>(
+          create: (_) => sl<ReflectionBloc>(),
+        ),
       ],
       child: MaterialApp(
-        title: 'Daily Habit',
+        title: 'Daily Planner',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
