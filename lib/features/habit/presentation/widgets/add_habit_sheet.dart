@@ -1,15 +1,17 @@
 import 'package:daily_habit/core/theme/app_theme.dart';
-import 'package:daily_habit/data_model/habit_data_model.dart';
+import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
 import 'package:flutter/material.dart';
 
 class AddHabitSheet extends StatefulWidget {
-  final HabitDataModel? habit; // null = create mode
+  final HabitEntity? habit; // null = create mode
   final Function(Map<String, dynamic>) onSave;
+
   const AddHabitSheet({
     super.key,
     this.habit,
     required this.onSave,
   });
+
   @override
   State<AddHabitSheet> createState() => _AddHabitSheetState();
 }
@@ -23,24 +25,39 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
 
   final List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-   void _save() {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.habit != null) {
+      _nameController.text = widget.habit!.name;
+      _selectedEmoji = widget.habit!.emoji;
+      _selectedDays.clear();
+      _selectedDays.addAll(widget.habit!.frequency);
+      
+      final colorIdx = AppTheme.habitColors.indexWhere((c) => c.toARGB32() == widget.habit!.colorValue);
+      if (colorIdx != -1) {
+        _selectedColorIndex = colorIdx;
+      }
+    }
+  }
+
+  void _save() {
     if (_nameController.text.trim().isEmpty) return;
-    
+
     widget.onSave({
       'name': _nameController.text.trim(),
       'emoji': _selectedEmoji,
-      'color': AppTheme.habitColors[_selectedColorIndex],
+      'colorValue': AppTheme.habitColors[_selectedColorIndex].toARGB32(),
       'frequency': _selectedDays,
-      'reminderTime': null, // Add time picker if needed
+      'reminderTime': null,
       'targetCount': 1,
       'unit': null,
       'categoryId': null,
     });
-    
+
     Navigator.pop(context);
   }
 
-  
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -61,7 +78,7 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -73,7 +90,7 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'New Habit',
+                        widget.habit == null ? 'New Habit' : 'Edit Habit',
                         style: Theme.of(context).textTheme.displayMedium,
                       ),
                       GestureDetector(
@@ -137,13 +154,13 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: isSelected 
-                                ? AppTheme.primary.withOpacity(0.15) 
+                            color: isSelected
+                                ? AppTheme.primary.withOpacity(0.15)
                                 : AppTheme.background,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: isSelected 
-                                  ? AppTheme.primary 
+                              color: isSelected
+                                  ? AppTheme.primary
                                   : Colors.transparent,
                               width: 2,
                             ),
@@ -183,8 +200,8 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                               color: AppTheme.habitColors[index],
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isSelected 
-                                    ? Colors.white 
+                                color: isSelected
+                                    ? Colors.white
                                     : Colors.transparent,
                                 width: 3,
                               ),
@@ -239,8 +256,8 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: isSelected 
-                                ? AppTheme.primary 
+                            color: isSelected
+                                ? AppTheme.primary
                                 : AppTheme.background,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -250,8 +267,8 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: isSelected 
-                                    ? Colors.white 
+                                color: isSelected
+                                    ? Colors.white
                                     : AppTheme.textSecondary,
                               ),
                             ),
@@ -273,10 +290,7 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
               width: double.infinity,
               height: 60,
               child: ElevatedButton(
-                onPressed: () {
-                  // Save habit logic
-                  _save();
-                },
+                onPressed: _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
@@ -285,9 +299,9 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: const Text(
-                  'Create Habit',
-                  style: TextStyle(
+                child: Text(
+                  widget.habit == null ? 'Create Habit' : 'Save Changes',
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),

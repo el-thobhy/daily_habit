@@ -1,0 +1,50 @@
+import 'package:daily_habit/features/habit/data/datasources/habit_local_datasource.dart';
+import 'package:daily_habit/features/habit/data/repositories/habit_repository_impl.dart';
+import 'package:daily_habit/features/habit/domain/repositories/habit_repository.dart';
+import 'package:daily_habit/features/habit/domain/usecases/habit_usecases.dart';
+import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
+import 'package:daily_habit/features/habit/presentation/bloc/habit_stats/habit_stats_bloc.dart';
+import 'package:get_it/get_it.dart';
+
+final sl = GetIt.instance;
+
+Future<void> initDI() async {
+  // Data sources
+  final localDataSource = HabitLocalDataSourceImpl();
+  await localDataSource.init();
+  sl.registerSingleton<HabitLocalDataSource>(localDataSource);
+
+  // Repositories
+  sl.registerLazySingleton<HabitRepository>(
+    () => HabitRepositoryImpl(localDataSource: sl()),
+  );
+
+  // Use cases
+  sl.registerLazySingleton(() => GetHabitsForToday(sl()));
+  sl.registerLazySingleton(() => GetAllHabits(sl()));
+  sl.registerLazySingleton(() => CreateHabit(sl()));
+  sl.registerLazySingleton(() => UpdateHabit(sl()));
+  sl.registerLazySingleton(() => ArchiveHabit(sl()));
+  sl.registerLazySingleton(() => UnarchiveHabit(sl()));
+  sl.registerLazySingleton(() => LogHabit(sl()));
+  sl.registerLazySingleton(() => CalculateStreak(sl()));
+
+  // BLoCs
+  sl.registerFactory(
+    () => HabitListBloc(
+      getHabitsForToday: sl(),
+      createHabit: sl(),
+      updateHabit: sl(),
+      archiveHabit: sl(),
+      unarchiveHabit: sl(),
+      logHabit: sl(),
+      repository: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => HabitStatsBloc(
+      repository: sl(),
+    ),
+  );
+}

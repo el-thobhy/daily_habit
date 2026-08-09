@@ -1,134 +1,33 @@
 import 'package:daily_habit/core/theme/app_theme.dart';
 import 'package:daily_habit/core/widgets/habit_card.dart';
-import 'package:daily_habit/data/services/hive_database.dart';
-import 'package:daily_habit/data_model/habit_data_model.dart';
-import 'package:daily_habit/data_model/habit_log_model.dart';
-import 'package:daily_habit/presentation/screens/add_habbit_sheet.dart';
-import 'package:daily_habit/presentation/screens/stats_screen.dart';
+import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
+import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
+import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_event.dart';
+import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_state.dart';
+import 'package:daily_habit/features/habit/presentation/pages/stats_page.dart';
+import 'package:daily_habit/features/habit/presentation/widgets/add_habit_sheet.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  final HiveDatabase _db = HiveDatabase();
   final _uuid = const Uuid();
-  
-  List<HabitDataModel> _habits = [];
-  Map<String, HabitLogModel?> _todayLogs = {};
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    
-    final habits = _db.getHabitsForToday();
-    final today = DateTime.now();
-    
-    final logs = <String, HabitLogModel?>{};
-    for (final habit in habits) {
-      logs[habit.id] = _db.getLogForDate(habit.id, today);
-    }
-
-    setState(() {
-      _habits = habits;
-      _todayLogs = logs;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _toggleHabit(String habitId) async {
-    final today = DateTime.now();
-    final currentLog = _todayLogs[habitId];
-    final newCompleted = !(currentLog?.completed ?? false);
-
-    await _db.logHabit(
-      habitId: habitId,
-      completed: newCompleted,
-      countValue: 1,
-    );
-
-    final newStreak = _db.calculateStreak(habitId);
-
-    setState(() {
-      _todayLogs[habitId] = HabitLogModel(
-        id: '${habitId}_${_formatDate(today)}',
-        habitId: habitId,
-        date: _formatDate(today),
-        completed: newCompleted,
-        countValue: 1,
-        completedAt: newCompleted ? DateTime.now() : null,
-        createdAt: currentLog?.createdAt ?? DateTime.now(),
-      );
-    });
-
-    if (newCompleted && newStreak > 0 && newStreak % 7 == 0) {
-      _showStreakCelebration(newStreak);
-    }
-  }
-
-  Future<void> _deleteHabit(String habitId) async {
-    await _db.archiveHabit(habitId);
-    
-    setState(() {
-      _habits.removeWhere((h) => h.id == habitId);
-      _todayLogs.remove(habitId);
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Habit archived'),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () async {
-              final habit = _db.habitsBox.get(habitId);
-              if (habit != null) {
-                habit.isArchived = false;
-                await habit.save();
-                await _loadData();
-              }
-            },
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    }
-  }
-
-  Future<void> _addHabit(Map<String, dynamic> data) async {
-    final habit = HabitDataModel(
-      id: _uuid.v4(),
-      name: data['name'],
-      emoji: data['emoji'],
-      colorValue: data['color'].value,
-      frequency: data['frequency'],
-      reminderTime: data['reminderTime'],
-      targetCount: data['targetCount'] ?? 1,
-      unit: data['unit'],
-      categoryId: data['categoryId'],
-      sortOrder: _habits.length,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-
-    await _db.createHabit(habit);
-    await _loadData();
+    context.read<HabitListBloc>().add(LoadTodayHabitsEvent());
   }
 
   void _showAddHabitSheet() {
@@ -137,42 +36,52 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => AddHabitSheet(
-        onSave: _addHabit,
+        onSave: (data) {
+          final habit = HabitEntity(
+            id: _uuid.v4(),
+            name: data['name'],
+            emoji: data['emoji'],
+            colorValue: data['colorValue'],
+            frequency: data['frequency'],
+            reminderTime: data['reminderTime'],
+            targetCount: data['targetCount'] ?? 1,
+            unit: data['unit'],
+            categoryId: data['categoryId'],
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          context.read<HabitListBloc>().add(AddHabitEvent(habit));
+        },
       ),
     );
   }
 
-  void _showEditHabitSheet(HabitDataModel habit) {
+  void _showEditHabitSheet(HabitEntity habit) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => AddHabitSheet(
         habit: habit,
-        onSave: (data) async {
-          final updated = HabitDataModel(
-            id: habit.id,
+        onSave: (data) {
+          final updated = habit.copyWith(
             name: data['name'],
             emoji: data['emoji'],
-            colorValue: data['color'].value,
+            colorValue: data['colorValue'],
             frequency: data['frequency'],
             reminderTime: data['reminderTime'],
             targetCount: data['targetCount'] ?? 1,
             unit: data['unit'],
             categoryId: data['categoryId'],
-            sortOrder: habit.sortOrder,
-            isArchived: habit.isArchived,
-            createdAt: habit.createdAt,
             updatedAt: DateTime.now(),
           );
-          await _db.updateHabit(updated);
-          await _loadData();
+          context.read<HabitListBloc>().add(UpdateHabitEvent(updated));
         },
       ),
     );
   }
 
-  void _showStreakCelebration(int streak) {
+  void _showStreakCelebration(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -183,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('🔥', style: TextStyle(fontSize: 64)),
             const SizedBox(height: 16),
             Text(
-              '$streak Day Streak!',
+              message,
               style: Theme.of(context).textTheme.displayMedium,
             ),
             const SizedBox(height: 8),
@@ -200,29 +109,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning ☀️';
+    if (hour < 17) return 'Good Afternoon 🌤️';
+    return 'Good Evening 🌙';
   }
 
-  int _getStreak(String habitId) {
-    return _db.calculateStreak(habitId);
-  }
-
-  List<double> _getWeeklyCompletionData() {
-    final data = <double>[];
-    final now = DateTime.now();
-    
-    for (int i = 6; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final dayLogs = _db.getLogsForDate(date);
-      final completed = dayLogs.where((log) => log?.completed == true).length;
-      final total = _habits.where((h) => 
-        h.frequency.contains(date.weekday)
-      ).length;
-      
-      data.add(total > 0 ? (completed / total) * 100 : 0);
-    }
-    return data;
+  String _getMotivationalMessage(double progress) {
+    if (progress == 0) return 'Let\'s get started!';
+    if (progress < 0.5) return 'Off to a good start!';
+    if (progress < 1.0) return 'More than halfway there!';
+    return 'All habits completed today! 🎉';
   }
 
   @override
@@ -231,85 +129,182 @@ class _HomeScreenState extends State<HomeScreen> {
     final isTablet = size.width > 600;
     final isDesktop = size.width > 900;
 
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: AppTheme.background,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final completedToday = _todayLogs.values.where((log) => log?.completed == true).length;
-    final progress = _habits.isEmpty ? 0.0 : completedToday / _habits.length;
-    final weeklyData = _getWeeklyCompletionData();
-
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadData,
-          color: AppTheme.primary,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Desktop/Tablet Layout - Use CustomScrollView with slivers
-              if (isDesktop || isTablet) {
-                return Row(
-                  children: [
-                    // Left Panel - Fixed width, scrollable content
-                    SizedBox(
-                      width: isDesktop ? 400 : 320,
-                      child: CustomScrollView(
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildHeader(isTablet: true),
-                                  const SizedBox(height: 32),
-                                  _buildProgressCard(
-                                    completedToday: completedToday,
-                                    progress: progress,
-                                    isTablet: true,
+        child: BlocConsumer<HabitListBloc, HabitListState>(
+          listener: (context, state) {
+            if (state is HabitListLoaded && state.celebrationMessage != null) {
+              _showStreakCelebration(state.celebrationMessage!);
+            }
+          },
+          builder: (context, state) {
+            if (state is HabitListLoading || state is HabitListInitial) {
+              return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+            }
+
+            if (state is HabitListError) {
+              return Center(
+                child: Text('Error: ${state.message}'),
+              );
+            }
+
+            final loadedState = state as HabitListLoaded;
+            final habits = loadedState.habits;
+            final todayLogs = loadedState.todayLogs;
+            final streaks = loadedState.streaks;
+            final weeklyData = loadedState.weeklyCompletionData;
+
+            final completedToday = todayLogs.values.where((log) => log?.completed == true).length;
+            final progress = habits.isEmpty ? 0.0 : completedToday / habits.length;
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<HabitListBloc>().add(LoadTodayHabitsEvent());
+              },
+              color: AppTheme.primary,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (isDesktop || isTablet) {
+                    return Row(
+                      children: [
+                        SizedBox(
+                          width: isDesktop ? 400 : 320,
+                          child: CustomScrollView(
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildHeader(isTablet: true),
+                                      const SizedBox(height: 32),
+                                      _buildProgressCard(
+                                        completedToday: completedToday,
+                                        totalHabits: habits.length,
+                                        progress: progress,
+                                        isTablet: true,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _buildWeeklyChart(weeklyData, isTablet: true, habitsCount: habits.length),
+                                      const SizedBox(height: 24),
+                                      _buildQuickStats(totalHabitsCount: habits.length, activeStreaksCount: streaks.values.where((s) => s > 0).length, todayHabitsCount: habits.length),
+                                      const SizedBox(height: 24),
+                                    ],
                                   ),
-                                  const SizedBox(height: 24),
-                                  _buildWeeklyChart(weeklyData, isTablet: true),
-                                  const SizedBox(height: 24),
-                                  _buildQuickStats(),
-                                  const SizedBox(height: 24),
-                                ],
+                                ),
                               ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.only(
+                              top: 24,
+                              right: 24,
+                              bottom: 24,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surface,
+                              borderRadius: BorderRadius.circular(32),
+                              boxShadow: AppTheme.cardShadow,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(32),
+                              child: habits.isEmpty
+                                  ? _buildEmptyState(isTablet: true)
+                                  : ListView.builder(
+                                      padding: const EdgeInsets.all(24),
+                                      itemCount: habits.length,
+                                      itemBuilder: (context, index) {
+                                        final habit = habits[index];
+                                        final log = todayLogs[habit.id];
+                                        final isCompleted = log?.completed ?? false;
+                                        final streak = streaks[habit.id] ?? 0;
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 16),
+                                          child: HabitCard(
+                                            id: habit.id,
+                                            name: habit.name,
+                                            emoji: habit.emoji,
+                                            color: Color(habit.colorValue),
+                                            streak: streak,
+                                            isCompleted: isCompleted,
+                                            onToggle: () {
+                                              context.read<HabitListBloc>().add(
+                                                    ToggleHabitCompletionEvent(habit.id),
+                                                  );
+                                            },
+                                            onEdit: () => _showEditHabitSheet(habit),
+                                            onDelete: () {
+                                              context.read<HabitListBloc>().add(
+                                                    ArchiveHabitEvent(habit.id),
+                                                  );
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: const Text('Habit archived'),
+                                                  action: SnackBarAction(
+                                                    label: 'Undo',
+                                                    onPressed: () {
+                                                      context.read<HabitListBloc>().add(
+                                                            UnarchiveHabitEvent(habit.id),
+                                                          );
+                                                    },
+                                                  ),
+                                                  behavior: SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ).animate(delay: (index * 50).ms).fadeIn().slideX();
+                                      },
+                                    ),
                             ),
                           ),
-                        ],
+                        ),
+                      ],
+                    );
+                  }
+
+                  return CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(isTablet: false),
+                              const SizedBox(height: 20),
+                              _buildProgressCard(
+                                completedToday: completedToday,
+                                totalHabits: habits.length,
+                                progress: progress,
+                                isTablet: false,
+                              ),
+                              const SizedBox(height: 20),
+                              _buildWeeklyChart(weeklyData, isTablet: false, habitsCount: habits.length),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    
-                    // Right Panel - Habits List
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(
-                          top: 24,
-                          right: 24,
-                          bottom: 24,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: AppTheme.cardShadow,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
-                          child: _habits.isEmpty
-                              ? _buildEmptyState(isTablet: true)
-                              : ListView.builder(
-                                  padding: const EdgeInsets.all(24),
-                                  itemCount: _habits.length,
-                                  itemBuilder: (context, index) {
-                                    final habit = _habits[index];
-                                    final log = _todayLogs[habit.id];
+                      habits.isEmpty
+                          ? SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: _buildEmptyState(isTablet: false),
+                            )
+                          : SliverPadding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final habit = habits[index];
+                                    final log = todayLogs[habit.id];
                                     final isCompleted = log?.completed ?? false;
-                                    final streak = _getStreak(habit.id);
+                                    final streak = streaks[habit.id] ?? 0;
 
                                     return Padding(
                                       padding: const EdgeInsets.only(bottom: 16),
@@ -320,87 +315,51 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: Color(habit.colorValue),
                                         streak: streak,
                                         isCompleted: isCompleted,
-                                        onToggle: () => _toggleHabit(habit.id),
+                                        onToggle: () {
+                                          context.read<HabitListBloc>().add(
+                                                ToggleHabitCompletionEvent(habit.id),
+                                              );
+                                        },
                                         onEdit: () => _showEditHabitSheet(habit),
-                                        onDelete: () => _deleteHabit(habit.id),
+                                        onDelete: () {
+                                          context.read<HabitListBloc>().add(
+                                                ArchiveHabitEvent(habit.id),
+                                              );
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: const Text('Habit archived'),
+                                              action: SnackBarAction(
+                                                label: 'Undo',
+                                                onPressed: () {
+                                                  context.read<HabitListBloc>().add(
+                                                        UnarchiveHabitEvent(habit.id),
+                                                      );
+                                                },
+                                              ),
+                                              behavior: SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    ).animate(delay: (index * 50).ms).fadeIn().slideX();
+                                    ).animate(delay: (index * 100).ms).fadeIn().slideY(
+                                          begin: 0.2,
+                                          end: 0,
+                                          duration: 400.ms,
+                                          curve: Curves.easeOutQuart,
+                                        );
                                   },
+                                  childCount: habits.length,
                                 ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              // Mobile Layout - Use CustomScrollView throughout
-              return CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(isTablet: false),
-                          const SizedBox(height: 20),
-                          _buildProgressCard(
-                            completedToday: completedToday,
-                            progress: progress,
-                            isTablet: false,
-                          ),
-                          const SizedBox(height: 20),
-                          _buildWeeklyChart(weeklyData, isTablet: false),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Empty state or list as sliver
-                  _habits.isEmpty
-                      ? SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: _buildEmptyState(isTablet: false),
-                        )
-                      : SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final habit = _habits[index];
-                                final log = _todayLogs[habit.id];
-                                final isCompleted = log?.completed ?? false;
-                                final streak = _getStreak(habit.id);
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: HabitCard(
-                                    id: habit.id,
-                                    name: habit.name,
-                                    emoji: habit.emoji,
-                                    color: Color(habit.colorValue),
-                                    streak: streak,
-                                    isCompleted: isCompleted,
-                                    onToggle: () => _toggleHabit(habit.id),
-                                    onEdit: () => _showEditHabitSheet(habit),
-                                    onDelete: () => _deleteHabit(habit.id),
-                                  ),
-                                ).animate(delay: (index * 100).ms).fadeIn().slideY(
-                                      begin: 0.2,
-                                      end: 0,
-                                      duration: 400.ms,
-                                      curve: Curves.easeOutQuart,
-                                    );
-                              },
-                              childCount: _habits.length,
+                              ),
                             ),
-                          ),
-                        ),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-                ],
-              );
-            },
-          ),
+                      const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
         ),
       ),
       bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
@@ -416,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           Text(
             'No habits for today',
-            style: isTablet 
+            style: isTablet
                 ? Theme.of(context).textTheme.displayMedium
                 : Theme.of(context).textTheme.titleLarge,
           ),
@@ -439,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               'My Habits',
-              style: isTablet 
+              style: isTablet
                   ? Theme.of(context).textTheme.displayLarge
                   : Theme.of(context).textTheme.displayMedium,
             ),
@@ -481,6 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildProgressCard({
     required int completedToday,
+    required int totalHabits,
     required double progress,
     required bool isTablet,
   }) {
@@ -528,7 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '$completedToday/${_habits.length}',
+                  '$completedToday/$totalHabits',
                   style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 12,
@@ -562,8 +522,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(List<double> data, {required bool isTablet}) {
-    if (_habits.isEmpty) return const SizedBox.shrink();
+  Widget _buildWeeklyChart(List<double> data, {required bool isTablet, required int habitsCount}) {
+    if (habitsCount == 0) return const SizedBox.shrink();
 
     return Container(
       padding: EdgeInsets.all(isTablet ? 24 : 16),
@@ -587,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
               GestureDetector(
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const StatsScreen()),
+                  MaterialPageRoute(builder: (_) => const StatsPage()),
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -598,7 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AppTheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
@@ -609,7 +569,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppTheme.primary,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Icon(
                         Icons.arrow_forward_ios,
                         size: 12,
@@ -690,8 +650,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: data[index],
-                        color: isToday 
-                            ? AppTheme.primary 
+                        color: isToday
+                            ? AppTheme.primary
                             : AppTheme.primary.withOpacity(0.3),
                         width: isTablet ? 16 : 12,
                         borderRadius: BorderRadius.circular(4),
@@ -707,17 +667,18 @@ class _HomeScreenState extends State<HomeScreen> {
     ).animate().fadeIn();
   }
 
-  Widget _buildQuickStats() {
-    final totalHabits = _db.getAllHabits().length;
-    final activeStreaks = _habits.where((h) => _getStreak(h.id) > 0).length;
-
+  Widget _buildQuickStats({
+    required int totalHabitsCount,
+    required int activeStreaksCount,
+    required int todayHabitsCount,
+  }) {
     return Row(
       children: [
-        _buildStatItem('Total', '$totalHabits', Icons.folder_outlined),
+        _buildStatItem('Total', '$totalHabitsCount', Icons.folder_outlined),
         const SizedBox(width: 12),
-        _buildStatItem('Active', '$activeStreaks', Icons.local_fire_department_outlined),
+        _buildStatItem('Active', '$activeStreaksCount', Icons.local_fire_department_outlined),
         const SizedBox(width: 12),
-        _buildStatItem('Today', '${_habits.length}', Icons.today_outlined),
+        _buildStatItem('Today', '$todayHabitsCount', Icons.today_outlined),
       ],
     );
   }
@@ -773,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (index == 1) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const StatsScreen()),
+                MaterialPageRoute(builder: (_) => const StatsPage()),
               );
             } else {
               setState(() => _selectedIndex = index);
@@ -801,19 +762,5 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning! ☀️';
-    if (hour < 17) return 'Good afternoon! 🌤';
-    return 'Good evening! 🌙';
-  }
-
-  String _getMotivationalMessage(double progress) {
-    if (progress == 0) return 'Start your day strong! 💪';
-    if (progress < 0.5) return 'Keep going, you\'re doing great!';
-    if (progress < 1) return 'Almost there! 🔥';
-    return 'All done! Amazing job! 🎉';
   }
 }
