@@ -1,5 +1,9 @@
 import 'package:daily_habit/core/theme/app_theme.dart';
 import 'package:daily_habit/core/widgets/habit_card.dart';
+import 'package:daily_habit/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:daily_habit/features/auth/presentation/bloc/auth_event.dart';
+import 'package:daily_habit/features/auth/presentation/bloc/auth_state.dart';
+import 'package:daily_habit/features/auth/presentation/views/login_screen.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_event.dart';
@@ -34,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   DateTime _selectedDate = DateTime.now();
   final _uuid = const Uuid();
+  var userName = "";
 
   @override
   void initState() {
@@ -146,26 +151,38 @@ class _HomePageState extends State<HomePage> {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 900;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: SafeArea(
-        child: Row(
-          children: [
-            if (isDesktop) _buildSidebarNav(),
-            Expanded(
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: [
-                  _buildPlannerTab(),
-                  _buildHabitsTab(),
-                  const StatsPage(),
-                ],
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Unauthenticated) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        } else if (state is Authenticated) {
+          userName = state.user.name;
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.background,
+        body: SafeArea(
+          child: Row(
+            children: [
+              if (isDesktop) _buildSidebarNav(),
+              Expanded(
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: [
+                    _buildPlannerTab(),
+                    _buildHabitsTab(),
+                    const StatsPage(),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
       ),
-      bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
     );
   }
 
@@ -192,9 +209,54 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const SizedBox(height: 40),
-          _buildSidebarItem(0, Icons.calendar_today_rounded, 'Planner & Reflection'),
-          _buildSidebarItem(1, Icons.check_circle_outline_rounded, 'Kelola Habits'),
+          _buildSidebarItem(
+            0,
+            Icons.calendar_today_rounded,
+            'Planner & Reflection',
+          ),
+          _buildSidebarItem(
+            1,
+            Icons.check_circle_outline_rounded,
+            'Kelola Habits',
+          ),
           _buildSidebarItem(2, Icons.insights_rounded, 'Stats & Analysis'),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: InkWell(
+              onTap: () {
+                context.read<AuthBloc>().add(LogoutEvent());
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.logout_rounded,
+                      color: AppTheme.danger,
+                      size: 20,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Keluar (Logout)',
+                      style: TextStyle(
+                        color: AppTheme.danger,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -211,12 +273,18 @@ class _HomePageState extends State<HomePage> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primary.withValues(alpha: 0.15) : Colors.transparent,
+            color: isSelected
+                ? AppTheme.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              Icon(icon, color: isSelected ? AppTheme.primary : AppTheme.textSecondary, size: 20),
+              Icon(
+                icon,
+                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                size: 20,
+              ),
               const SizedBox(width: 12),
               Text(
                 label,
@@ -298,7 +366,10 @@ class _HomePageState extends State<HomePage> {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -320,7 +391,10 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   sliver: _buildHabitsListSliver(),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -331,7 +405,10 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   sliver: _buildTasksListSliver(),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -340,7 +417,11 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        const Icon(Icons.menu_book_rounded, color: AppTheme.warning, size: 22),
+                        const Icon(
+                          Icons.menu_book_rounded,
+                          color: AppTheme.warning,
+                          size: 22,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Pelajaran & Refleksi Hari Ini',
@@ -378,15 +459,15 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 4),
               Text(
-                _getGreeting(),
+                _getGreeting() + userName,
                 style: AppTheme.textTheme.bodyMedium,
               ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppTheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
@@ -400,6 +481,18 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
+        const SizedBox(width: 4),
+        IconButton(
+          icon: const Icon(
+            Icons.logout_rounded,
+            color: AppTheme.danger,
+            size: 20,
+          ),
+          tooltip: 'Keluar (Logout)',
+          onPressed: () {
+            context.read<AuthBloc>().add(LogoutEvent());
+          },
+        ),
       ],
     );
   }
@@ -412,10 +505,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Icon(Icons.repeat, color: AppTheme.primary, size: 20),
             const SizedBox(width: 8),
-            Text(
-              'Habit Tetap Harian',
-              style: AppTheme.textTheme.titleLarge,
-            ),
+            Text('Habit Tetap Harian', style: AppTheme.textTheme.titleLarge),
           ],
         ),
         TextButton.icon(
@@ -435,10 +525,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Icon(Icons.task_alt, color: AppTheme.success, size: 20),
             const SizedBox(width: 8),
-            Text(
-              'Agenda & Task',
-              style: AppTheme.textTheme.titleLarge,
-            ),
+            Text('Agenda & Task', style: AppTheme.textTheme.titleLarge),
           ],
         ),
         ElevatedButton.icon(
@@ -494,8 +581,8 @@ class _HomePageState extends State<HomePage> {
                   isCompleted: isCompleted,
                   onToggle: () {
                     context.read<HabitListBloc>().add(
-                          ToggleHabitCompletionEvent(habit.id),
-                        );
+                      ToggleHabitCompletionEvent(habit.id),
+                    );
                   },
                 ),
               );
@@ -532,31 +619,28 @@ class _HomePageState extends State<HomePage> {
             );
           }
           return SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final habit = habits[index];
-                final isCompleted = state.todayLogs[habit.id]?.completed ?? false;
-                final streak = state.streaks[habit.id] ?? 0;
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final habit = habits[index];
+              final isCompleted = state.todayLogs[habit.id]?.completed ?? false;
+              final streak = state.streaks[habit.id] ?? 0;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: HabitCard(
-                    id: habit.id,
-                    name: habit.name,
-                    emoji: habit.emoji,
-                    color: Color(habit.colorValue),
-                    streak: streak,
-                    isCompleted: isCompleted,
-                    onToggle: () {
-                      context.read<HabitListBloc>().add(
-                            ToggleHabitCompletionEvent(habit.id),
-                          );
-                    },
-                  ),
-                );
-              },
-              childCount: habits.length,
-            ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: HabitCard(
+                  id: habit.id,
+                  name: habit.name,
+                  emoji: habit.emoji,
+                  color: Color(habit.colorValue),
+                  streak: streak,
+                  isCompleted: isCompleted,
+                  onToggle: () {
+                    context.read<HabitListBloc>().add(
+                      ToggleHabitCompletionEvent(habit.id),
+                    );
+                  },
+                ),
+              );
+            }, childCount: habits.length),
           );
         }
         return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -583,7 +667,11 @@ class _HomePageState extends State<HomePage> {
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.event_note, size: 40, color: AppTheme.textSecondary),
+                  const Icon(
+                    Icons.event_note,
+                    size: 40,
+                    color: AppTheme.textSecondary,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Belum ada aktivitas khusus untuk tanggal ini',
@@ -627,7 +715,11 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.event_note, size: 40, color: AppTheme.textSecondary),
+                    const Icon(
+                      Icons.event_note,
+                      size: 40,
+                      color: AppTheme.textSecondary,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'Belum ada aktivitas khusus untuk tanggal ini',
@@ -639,13 +731,10 @@ class _HomePageState extends State<HomePage> {
             );
           }
           return SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final task = tasks[index];
-                return _buildTaskTile(task);
-              },
-              childCount: tasks.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final task = tasks[index];
+              return _buildTaskTile(task);
+            }, childCount: tasks.length),
           );
         }
         return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -661,8 +750,10 @@ class _HomePageState extends State<HomePage> {
           reflection = state.reflection;
         }
 
-        final hasContent = reflection != null &&
-            (reflection.todayLesson.isNotEmpty || reflection.memorableNotes.isNotEmpty);
+        final hasContent =
+            reflection != null &&
+            (reflection.todayLesson.isNotEmpty ||
+                reflection.memorableNotes.isNotEmpty);
 
         return GestureDetector(
           onTap: () => _showReflectionSheet(reflection),
@@ -670,10 +761,7 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppTheme.surface,
-                  AppTheme.background,
-                ],
+                colors: [AppTheme.surface, AppTheme.background],
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: AppTheme.cardShadow,
@@ -770,7 +858,9 @@ class _HomePageState extends State<HomePage> {
           Checkbox(
             value: task.isCompleted,
             activeColor: AppTheme.success,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
             onChanged: (_) {
               context.read<PlannerBloc>().add(TogglePlannerTaskEvent(task));
             },
@@ -785,15 +875,23 @@ class _HomePageState extends State<HomePage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                    color: task.isCompleted ? AppTheme.textSecondary : AppTheme.textPrimary,
+                    decoration: task.isCompleted
+                        ? TextDecoration.lineThrough
+                        : null,
+                    color: task.isCompleted
+                        ? AppTheme.textSecondary
+                        : AppTheme.textPrimary,
                   ),
                 ),
-                if (task.description != null && task.description!.isNotEmpty) ...[
+                if (task.description != null &&
+                    task.description!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     task.description!,
-                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                 ],
               ],
@@ -808,17 +906,28 @@ class _HomePageState extends State<HomePage> {
               ),
               child: Text(
                 task.timeString!,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                ),
               ),
             ),
             const SizedBox(width: 8),
           ],
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.danger),
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 18,
+              color: AppTheme.danger,
+            ),
             onPressed: () {
               context.read<PlannerBloc>().add(
-                    DeletePlannerTaskEvent(taskId: task.id, currentDate: _selectedDate),
-                  );
+                DeletePlannerTaskEvent(
+                  taskId: task.id,
+                  currentDate: _selectedDate,
+                ),
+              );
             },
           ),
         ],
@@ -874,7 +983,12 @@ class _HomePageState extends State<HomePage> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 100),
+                        padding: const EdgeInsets.only(
+                          left: 20,
+                          right: 20,
+                          top: 8,
+                          bottom: 100,
+                        ),
                         itemCount: habits.length,
                         itemBuilder: (context, index) {
                           final habit = habits[index];
@@ -886,17 +1000,18 @@ class _HomePageState extends State<HomePage> {
                               emoji: habit.emoji,
                               color: Color(habit.colorValue),
                               streak: state.streaks[habit.id] ?? 0,
-                              isCompleted: state.todayLogs[habit.id]?.completed ?? false,
+                              isCompleted:
+                                  state.todayLogs[habit.id]?.completed ?? false,
                               onToggle: () {
                                 context.read<HabitListBloc>().add(
-                                      ToggleHabitCompletionEvent(habit.id),
-                                    );
+                                  ToggleHabitCompletionEvent(habit.id),
+                                );
                               },
                               onEdit: () => _showEditHabitSheet(habit),
                               onDelete: () {
                                 context.read<HabitListBloc>().add(
-                                      ArchiveHabitEvent(habit.id),
-                                    );
+                                  ArchiveHabitEvent(habit.id),
+                                );
                               },
                             ),
                           );

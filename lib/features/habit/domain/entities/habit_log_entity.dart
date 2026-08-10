@@ -9,6 +9,7 @@ class HabitLogEntity extends Equatable {
   final String? note;
   final DateTime? completedAt;
   final DateTime createdAt;
+  final String? userId;
 
   const HabitLogEntity({
     required this.id,
@@ -19,6 +20,7 @@ class HabitLogEntity extends Equatable {
     this.note,
     this.completedAt,
     required this.createdAt,
+    this.userId,
   });
 
   @override
@@ -31,5 +33,6 @@ class HabitLogEntity extends Equatable {
         note,
         completedAt,
         createdAt,
+        userId,
       ];
 }

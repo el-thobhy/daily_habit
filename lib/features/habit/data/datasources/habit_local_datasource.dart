@@ -1,13 +1,13 @@
+import 'package:daily_habit/core/services/secure_storage_service.dart';
 import 'package:daily_habit/data_model/habit_data_model.dart';
 import 'package:daily_habit/data_model/habit_log_model.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 abstract class HabitLocalDataSource {
   Future<void> init();
   Future<void> createHabit(HabitDataModel habit);
-  List<HabitDataModel> getAllHabits({bool includeArchived = false});
-  List<HabitDataModel> getHabitsForToday();
+  List<HabitDataModel> getAllHabits({bool includeArchived = false, String? userId});
+  List<HabitDataModel> getHabitsForToday({String? userId});
   Future<void> updateHabit(HabitDataModel habit);
   Future<void> archiveHabit(String id);
   Future<void> unarchiveHabit(String id);
@@ -23,14 +23,19 @@ abstract class HabitLocalDataSource {
   Map<String, dynamic> getStatsForRange(DateTime start, DateTime end);
   int calculateStreak(String habitId);
   Future<void> clearAll();
+  Future<String?> getCurrentUserId();
 }
 
 class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   static const String habitsBoxName = 'habits';
   static const String logsBoxName = 'habit_logs';
 
+  final SecureStorageService? secureStorage;
   late Box<HabitDataModel> _habitsBox;
   late Box<HabitLogModel> _logsBox;
+  String? _cachedUserId;
+
+  HabitLocalDataSourceImpl({this.secureStorage});
 
   @override
   Future<void> init() async {
@@ -45,17 +50,40 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
 
     _habitsBox = await Hive.openBox<HabitDataModel>(habitsBoxName);
     _logsBox = await Hive.openBox<HabitLogModel>(logsBoxName);
+    await getCurrentUserId();
+  }
+
+  @override
+  Future<String?> getCurrentUserId() async {
+    if (secureStorage != null) {
+      final userData = await secureStorage!.getUserData();
+      final id = userData['id'];
+      if (id != null && id.isNotEmpty) {
+        _cachedUserId = id;
+        return id;
+      }
+    }
+    return _cachedUserId;
   }
 
   @override
   Future<void> createHabit(HabitDataModel habit) async {
+    if (habit.userId == null || habit.userId!.isEmpty) {
+      habit.userId = await getCurrentUserId();
+    }
     await _habitsBox.put(habit.id, habit);
   }
 
   @override
-  List<HabitDataModel> getAllHabits({bool includeArchived = false}) {
-    final habits = _habitsBox.values.toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  List<HabitDataModel> getAllHabits({bool includeArchived = false, String? userId}) {
+    final targetUserId = userId ?? _cachedUserId;
+    var habits = _habitsBox.values.toList();
+
+    if (targetUserId != null && targetUserId.isNotEmpty) {
+      habits = habits.where((h) => h.userId == null || h.userId == targetUserId).toList();
+    }
+
+    habits.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     if (!includeArchived) {
       return habits.where((h) => !h.isArchived).toList();
@@ -64,9 +92,9 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   }
 
   @override
-  List<HabitDataModel> getHabitsForToday() {
+  List<HabitDataModel> getHabitsForToday({String? userId}) {
     final today = DateTime.now().weekday;
-    return getAllHabits()
+    return getAllHabits(userId: userId)
         .where((h) => h.frequency.contains(today))
         .toList();
   }
@@ -74,6 +102,9 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   @override
   Future<void> updateHabit(HabitDataModel habit) async {
     habit.updatedAt = DateTime.now();
+    if (habit.userId == null || habit.userId!.isEmpty) {
+      habit.userId = await getCurrentUserId();
+    }
     await _habitsBox.put(habit.id, habit);
   }
 
@@ -102,14 +133,16 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
     int countValue = 1,
     String? note,
   }) async {
+    final userId = await getCurrentUserId();
     final today = _formatDate(DateTime.now());
     final existingLog = _logsBox.values.firstWhere(
-      (log) => log.habitId == habitId && log.date == today,
+      (log) => log.habitId == habitId && log.date == today && (log.userId == null || log.userId == userId),
       orElse: () => HabitLogModel(
         id: '${habitId}_$today',
         habitId: habitId,
         date: today,
         createdAt: DateTime.now(),
+        userId: userId,
       ),
     );
 
@@ -117,7 +150,8 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
       ..completed = completed
       ..countValue = countValue
       ..note = note
-      ..completedAt = completed ? DateTime.now() : null;
+      ..completedAt = completed ? DateTime.now() : null
+      ..userId = userId;
 
     await _logsBox.put(existingLog.id, existingLog);
   }
@@ -126,7 +160,9 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   HabitLogModel? getLogForDate(String habitId, DateTime date) {
     final dateStr = _formatDate(date);
     try {
-      return _logsBox.values.firstWhere((log) => log.habitId == habitId && log.date == dateStr);
+      return _logsBox.values.firstWhere(
+        (log) => log.habitId == habitId && log.date == dateStr && (log.userId == null || log.userId == _cachedUserId),
+      );
     } catch (e) {
       return null;
     }
@@ -135,7 +171,7 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   @override
   List<HabitLogModel> getLogForHabit(String habitId, {int? limit}) {
     final logs = _logsBox.values
-        .where((log) => log.habitId == habitId)
+        .where((log) => log.habitId == habitId && (log.userId == null || log.userId == _cachedUserId))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -148,14 +184,18 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   @override
   List<HabitLogModel?> getLogsForDate(DateTime date) {
     final dateStr = _formatDate(date);
-    return _logsBox.values.where((log) => log.date == dateStr).toList();
+    return _logsBox.values
+        .where((log) => log.date == dateStr && (log.userId == null || log.userId == _cachedUserId))
+        .toList();
   }
 
   @override
   Map<String, dynamic> getStatsForRange(DateTime start, DateTime end) {
     final logs = _logsBox.values.where((log) {
       final logDate = DateTime.parse(log.date);
-      return logDate.isAfter(start.subtract(const Duration(days: 1))) &&
+      final isUserMatch = log.userId == null || log.userId == _cachedUserId;
+      return isUserMatch &&
+          logDate.isAfter(start.subtract(const Duration(days: 1))) &&
           logDate.isBefore(end.add(const Duration(days: 1)));
     }).toList();
 

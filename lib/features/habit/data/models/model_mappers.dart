@@ -19,6 +19,7 @@ extension HabitDataModelX on HabitDataModel {
       isArchived: isArchived,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      userId: userId,
     );
   }
 
@@ -37,6 +38,7 @@ extension HabitDataModelX on HabitDataModel {
       isArchived: entity.isArchived,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      userId: entity.userId,
     );
   }
 }
@@ -52,6 +54,7 @@ extension HabitLogModelX on HabitLogModel {
       note: note,
       completedAt: completedAt,
       createdAt: createdAt,
+      userId: userId,
     );
   }
 
@@ -65,6 +68,7 @@ extension HabitLogModelX on HabitLogModel {
       note: entity.note,
       completedAt: entity.completedAt,
       createdAt: entity.createdAt,
+      userId: entity.userId,
     );
   }
 }

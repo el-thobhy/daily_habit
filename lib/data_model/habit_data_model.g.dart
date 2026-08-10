@@ -30,13 +30,14 @@ class HabitDataModelAdapter extends TypeAdapter<HabitDataModel> {
       isArchived: fields[10] as bool,
       createdAt: fields[11] as DateTime,
       updatedAt: fields[12] as DateTime,
+      userId: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HabitDataModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class HabitDataModelAdapter extends TypeAdapter<HabitDataModel> {
       ..writeByte(11)
       ..write(obj.createdAt)
       ..writeByte(12)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(13)
+      ..write(obj.userId);
   }
 
   @override

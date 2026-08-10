@@ -1,7 +1,8 @@
 import 'package:daily_habit/core/di/injection_container.dart';
 import 'package:daily_habit/core/theme/app_theme.dart';
+import 'package:daily_habit/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:daily_habit/features/auth/presentation/views/splash_screen.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
-import 'package:daily_habit/features/habit/presentation/pages/home_page.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_bloc.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_bloc.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<AuthBloc>(
+          create: (_) => sl<AuthBloc>(),
+        ),
         BlocProvider<HabitListBloc>(
           create: (_) => sl<HabitListBloc>(),
         ),
@@ -53,8 +57,9 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
         ),
-        home: const HomePage(),
+        home: const SplashScreen(),
       ),
     );
   }
 }
+

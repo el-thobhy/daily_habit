@@ -1,4 +1,12 @@
+import 'package:daily_habit/core/network/api_client.dart';
 import 'package:daily_habit/core/services/notification_service.dart';
+import 'package:daily_habit/core/services/secure_storage_service.dart';
+import 'package:daily_habit/features/auth/data/datasources/auth_local_datasource.dart';
+import 'package:daily_habit/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:daily_habit/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:daily_habit/features/auth/domain/repositories/auth_repository.dart';
+import 'package:daily_habit/features/auth/domain/usecases/auth_usecases.dart';
+import 'package:daily_habit/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:daily_habit/features/habit/data/datasources/habit_local_datasource.dart';
 import 'package:daily_habit/features/habit/data/repositories/habit_repository_impl.dart';
 import 'package:daily_habit/features/habit/domain/repositories/habit_repository.dart';
@@ -21,14 +29,27 @@ Future<void> initDI() async {
   await notificationService.init();
   sl.registerSingleton<NotificationService>(notificationService);
 
+  final secureStorage = SecureStorageService();
+  sl.registerSingleton<SecureStorageService>(secureStorage);
+
+  final apiClient = ApiClient(secureStorage: sl());
+  sl.registerSingleton<ApiClient>(apiClient);
+
   // Data sources
-  final localDataSource = HabitLocalDataSourceImpl();
+  final localDataSource = HabitLocalDataSourceImpl(secureStorage: sl());
   await localDataSource.init();
   sl.registerSingleton<HabitLocalDataSource>(localDataSource);
 
   final plannerLocalDataSource = PlannerLocalDataSourceImpl();
   await plannerLocalDataSource.init();
   sl.registerSingleton<PlannerLocalDataSource>(plannerLocalDataSource);
+
+  sl.registerLazySingleton<AuthRemoteDataSource>(
+    () => AuthRemoteDataSourceImpl(apiClient: sl()),
+  );
+  sl.registerLazySingleton<AuthLocalDataSource>(
+    () => AuthLocalDataSourceImpl(secureStorage: sl()),
+  );
 
   // Repositories
   sl.registerLazySingleton<HabitRepository>(
@@ -37,6 +58,10 @@ Future<void> initDI() async {
 
   sl.registerLazySingleton<PlannerRepository>(
     () => PlannerRepositoryImpl(localDataSource: sl()),
+  );
+
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
   );
 
   // Use cases (Habit)
@@ -57,7 +82,28 @@ Future<void> initDI() async {
   sl.registerLazySingleton(() => GetReflectionForDate(sl()));
   sl.registerLazySingleton(() => SaveReflection(sl()));
 
+  // Use cases (Auth)
+  sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => RegisterUseCase(sl()));
+  sl.registerLazySingleton(() => VerifyOtpUseCase(sl()));
+  sl.registerLazySingleton(() => ForgotPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => ResetPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => CheckAuthStatusUseCase(sl()));
+  sl.registerLazySingleton(() => LogoutUseCase(sl()));
+
   // BLoCs
+  sl.registerFactory(
+    () => AuthBloc(
+      loginUseCase: sl(),
+      registerUseCase: sl(),
+      verifyOtpUseCase: sl(),
+      forgotPasswordUseCase: sl(),
+      resetPasswordUseCase: sl(),
+      checkAuthStatusUseCase: sl(),
+      logoutUseCase: sl(),
+    ),
+  );
+
   sl.registerFactory(
     () => HabitListBloc(
       getHabitsForToday: sl(),
@@ -92,3 +138,4 @@ Future<void> initDI() async {
     ),
   );
 }
+

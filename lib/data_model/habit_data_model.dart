@@ -43,7 +43,10 @@ class HabitDataModel extends HiveObject {
   @HiveField(12)
   DateTime updatedAt;
 
-   HabitDataModel({
+  @HiveField(13)
+  String? userId;
+
+  HabitDataModel({
     required this.id,
     required this.name,
     required this.emoji,
@@ -57,5 +60,6 @@ class HabitDataModel extends HiveObject {
     this.isArchived = false,
     required this.createdAt,
     required this.updatedAt,
+    this.userId,
   });
 }

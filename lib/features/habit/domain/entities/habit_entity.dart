@@ -14,6 +14,7 @@ class HabitEntity extends Equatable {
   final bool isArchived;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? userId;
 
   const HabitEntity({
     required this.id,
@@ -29,6 +30,7 @@ class HabitEntity extends Equatable {
     this.isArchived = false,
     required this.createdAt,
     required this.updatedAt,
+    this.userId,
   });
 
   HabitEntity copyWith({
@@ -45,6 +47,7 @@ class HabitEntity extends Equatable {
     bool? isArchived,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? userId,
   }) {
     return HabitEntity(
       id: id ?? this.id,
@@ -60,6 +63,7 @@ class HabitEntity extends Equatable {
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -78,5 +82,6 @@ class HabitEntity extends Equatable {
         isArchived,
         createdAt,
         updatedAt,
+        userId,
       ];
 }

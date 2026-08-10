@@ -29,6 +29,9 @@ class HabitLogModel extends HiveObject {
   @HiveField(7)
   DateTime createdAt;
 
+  @HiveField(8)
+  String? userId;
+
   HabitLogModel({
     required this.id,
     required this.habitId,
@@ -38,5 +41,6 @@ class HabitLogModel extends HiveObject {
     this.note,
     this.completedAt,
     required this.createdAt,
+    this.userId,
   });
 }
