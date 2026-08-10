@@ -38,7 +38,6 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   DateTime _selectedDate = DateTime.now();
   final _uuid = const Uuid();
-  var userName = "";
 
   @override
   void initState() {
@@ -158,8 +157,6 @@ class _HomePageState extends State<HomePage> {
             MaterialPageRoute(builder: (_) => const LoginScreen()),
             (route) => false,
           );
-        } else if (state is Authenticated) {
-          userName = state.user.name;
         }
       },
       child: Scaffold(
@@ -444,56 +441,63 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHeaderSection(String formattedDate) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Daily Planner',
-                style: AppTheme.textTheme.displayMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        // Ambil nama user langsung dari state
+        final displayName = state is Authenticated ? state.user.name : '';
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Daily Planner',
+                    style: AppTheme.textTheme.displayMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getGreeting() + " " + displayName,
+                    style: AppTheme.textTheme.bodyMedium,
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                _getGreeting() + userName,
-                style: AppTheme.textTheme.bodyMedium,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            formattedDate,
-            style: const TextStyle(
-              color: AppTheme.primary,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
             ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        IconButton(
-          icon: const Icon(
-            Icons.logout_rounded,
-            color: AppTheme.danger,
-            size: 20,
-          ),
-          tooltip: 'Keluar (Logout)',
-          onPressed: () {
-            context.read<AuthBloc>().add(LogoutEvent());
-          },
-        ),
-      ],
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                formattedDate,
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(
+                Icons.logout_rounded,
+                color: AppTheme.danger,
+                size: 20,
+              ),
+              tooltip: 'Keluar (Logout)',
+              onPressed: () {
+                context.read<AuthBloc>().add(LogoutEvent());
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -37,7 +37,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final user = await checkAuthStatusUseCase.call();
+      final user = await checkAuthStatusUseCase();
       if (user != null) {
         emit(Authenticated(user));
       } else {
