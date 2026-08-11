@@ -69,21 +69,18 @@ class HabitCard extends StatelessWidget {
               boxShadow: isCompleted ? [] : AppTheme.cardShadow,
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Center(
-                      child: Text(
-                        emoji,
-                        style: const TextStyle(fontSize: 24),
-                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 20)),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -94,7 +91,7 @@ class HabitCard extends StatelessWidget {
                         Text(
                           name,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: isCompleted
                                 ? AppTheme.textSecondary
@@ -124,12 +121,20 @@ class HabitCard extends StatelessWidget {
                       children: [
                         if (onEdit != null)
                           IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.textSecondary),
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: AppTheme.textSecondary,
+                            ),
                             onPressed: onEdit,
                           ),
                         if (onDelete != null)
                           IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: AppTheme.danger,
+                            ),
                             onPressed: onDelete,
                           ),
                       ],

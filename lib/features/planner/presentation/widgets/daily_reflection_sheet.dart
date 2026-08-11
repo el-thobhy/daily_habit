@@ -58,113 +58,126 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.auto_awesome, color: AppTheme.warning),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Evaluasi & Refleksi Hari Ini',
-                      style: AppTheme.textTheme.titleLarge,
-                    ),
-                  ],
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                )
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Pelajaran Hari Ini (Learning Everyday)',
-              style: AppTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _lessonController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Apa hal atau ilmu baru yang kamu pelajari hari ini?',
-                filled: true,
-                fillColor: AppTheme.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+    return SafeArea(
+      child: Container(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        decoration: const BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: AppTheme.warning),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Evaluasi & Refleksi Hari Ini',
+                        style: AppTheme.textTheme.titleLarge,
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Pelajaran Hari Ini (Learning Everyday)',
+                style: AppTheme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Catatan Berkesan Hari Ini',
-              style: AppTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Momen atau ucapan syukur apa yang terjadi hari ini?',
-                filled: true,
-                fillColor: AppTheme.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Perasaan Hari Ini',
-              style: AppTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildMoodIcon(1, '😢'),
-                _buildMoodIcon(2, '😕'),
-                _buildMoodIcon(3, '😐'),
-                _buildMoodIcon(4, '🙂'),
-                _buildMoodIcon(5, '😄'),
-              ],
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: _submit,
-                icon: const Icon(Icons.save),
-                label: const Text('Simpan Refleksi Hari Ini', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
+              const SizedBox(height: 6),
+              TextField(
+                controller: _lessonController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText:
+                      'Apa hal atau ilmu baru yang kamu pelajari hari ini?',
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                'Catatan Berkesan Hari Ini',
+                style: AppTheme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText:
+                      'Momen atau ucapan syukur apa yang terjadi hari ini?',
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Perasaan Hari Ini',
+                style: AppTheme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildMoodIcon(1, '😢'),
+                  _buildMoodIcon(2, '😕'),
+                  _buildMoodIcon(3, '😐'),
+                  _buildMoodIcon(4, '🙂'),
+                  _buildMoodIcon(5, '😄'),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.save),
+                  label: const Text(
+                    'Simpan Refleksi Hari Ini',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -178,14 +191,15 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary.withOpacity(0.15) : AppTheme.background,
+          color: isSelected
+              ? AppTheme.primary.withOpacity(0.15)
+              : AppTheme.background,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: AppTheme.primary, width: 2) : null,
+          border: isSelected
+              ? Border.all(color: AppTheme.primary, width: 2)
+              : null,
         ),
-        child: Text(
-          emoji,
-          style: TextStyle(fontSize: isSelected ? 28 : 22),
-        ),
+        child: Text(emoji, style: TextStyle(fontSize: isSelected ? 28 : 22)),
       ),
     );
   }

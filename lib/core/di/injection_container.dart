@@ -116,11 +116,7 @@ Future<void> initDI() async {
     ),
   );
 
-  sl.registerFactory(
-    () => HabitStatsBloc(
-      repository: sl(),
-    ),
-  );
+  sl.registerFactory(() => HabitStatsBloc(repository: sl()));
 
   sl.registerFactory(
     () => PlannerBloc(
@@ -128,14 +124,11 @@ Future<void> initDI() async {
       addPlannerTask: sl(),
       updatePlannerTask: sl(),
       deletePlannerTask: sl(),
+      notificationService: sl(),
     ),
   );
 
   sl.registerFactory(
-    () => ReflectionBloc(
-      getReflectionForDate: sl(),
-      saveReflection: sl(),
-    ),
+    () => ReflectionBloc(getReflectionForDate: sl(), saveReflection: sl()),
   );
 }
-

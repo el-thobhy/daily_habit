@@ -109,6 +109,111 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _confirmDeleteHabit(HabitEntity habit) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppTheme.surface,
+        title: Text(
+          'Hapus Habit',
+          style: AppTheme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus habit "${habit.name}"?',
+          style: AppTheme.textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              'Batal',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<HabitListBloc>().add(ArchiveHabitEvent(habit.id));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteTask(PlannerTaskEntity task) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppTheme.surface,
+        title: Text(
+          'Hapus Task',
+          style: AppTheme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus task "${task.title}"?',
+          style: AppTheme.textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              'Batal',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<PlannerBloc>().add(
+                DeletePlannerTaskEvent(
+                  taskId: task.id,
+                  currentDate: _selectedDate,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAddPlannerTaskSheet() {
     showModalBottomSheet(
       context: context,
@@ -925,14 +1030,7 @@ class _HomePageState extends State<HomePage> {
               size: 18,
               color: AppTheme.danger,
             ),
-            onPressed: () {
-              context.read<PlannerBloc>().add(
-                DeletePlannerTaskEvent(
-                  taskId: task.id,
-                  currentDate: _selectedDate,
-                ),
-              );
-            },
+            onPressed: () => _confirmDeleteTask(task),
           ),
         ],
       ),
@@ -1005,11 +1103,7 @@ class _HomePageState extends State<HomePage> {
                               color: Color(habit.colorValue),
                               streak: state.streaks[habit.id] ?? 0,
                               onEdit: () => _showEditHabitSheet(habit),
-                              onDelete: () {
-                                context.read<HabitListBloc>().add(
-                                  ArchiveHabitEvent(habit.id),
-                                );
-                              },
+                              onDelete: () => _confirmDeleteHabit(habit),
                             ),
                           );
                         },
