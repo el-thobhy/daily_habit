@@ -8,7 +8,13 @@ abstract class HabitListEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadTodayHabitsEvent extends HabitListEvent {}
+class LoadTodayHabitsEvent extends HabitListEvent {
+  final DateTime? date;
+  const LoadTodayHabitsEvent({this.date});
+
+  @override
+  List<Object?> get props => [date];
+}
 
 class ToggleHabitCompletionEvent extends HabitListEvent {
   final String habitId;

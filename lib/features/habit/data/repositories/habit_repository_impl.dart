@@ -21,8 +21,8 @@ class HabitRepositoryImpl implements HabitRepository {
   }
 
   @override
-  List<HabitEntity> getHabitsForToday() {
-    final models = localDataSource.getHabitsForToday();
+  List<HabitEntity> getHabitsForToday({DateTime? date}) {
+    final models = localDataSource.getHabitsForToday(date: date);
     return models.map((m) => m.toEntity()).toList();
   }
 
@@ -47,12 +47,14 @@ class HabitRepositoryImpl implements HabitRepository {
     required bool completed,
     int countValue = 1,
     String? note,
+    DateTime? date,
   }) async {
     await localDataSource.logHabit(
       habitId: habitId,
       completed: completed,
       countValue: countValue,
       note: note,
+      date: date,
     );
   }
 

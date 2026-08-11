@@ -2,14 +2,14 @@ import 'package:daily_habit/core/usecase/usecase.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
 import 'package:daily_habit/features/habit/domain/repositories/habit_repository.dart';
 
-class GetHabitsForToday implements UseCase<List<HabitEntity>, NoParams> {
+class GetHabitsForToday implements UseCase<List<HabitEntity>, DateTime?> {
   final HabitRepository repository;
 
   GetHabitsForToday(this.repository);
 
   @override
-  Future<List<HabitEntity>> call(NoParams params) async {
-    return repository.getHabitsForToday();
+  Future<List<HabitEntity>> call(DateTime? date) async {
+    return repository.getHabitsForToday(date: date);
   }
 }
 
@@ -73,12 +73,14 @@ class LogHabitParams {
   final bool completed;
   final int countValue;
   final String? note;
+  final DateTime? date;
 
   LogHabitParams({
     required this.habitId,
     required this.completed,
     this.countValue = 1,
     this.note,
+    this.date,
   });
 }
 
@@ -94,6 +96,7 @@ class LogHabit implements UseCase<void, LogHabitParams> {
       completed: params.completed,
       countValue: params.countValue,
       note: params.note,
+      date: params.date,
     );
   }
 }

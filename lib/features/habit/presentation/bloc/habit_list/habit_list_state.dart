@@ -19,6 +19,7 @@ class HabitListLoaded extends HabitListState {
   final Map<String, int> streaks;
   final List<double> weeklyCompletionData;
   final String? celebrationMessage;
+  final DateTime? selectedDate;
 
   const HabitListLoaded({
     required this.habits,
@@ -26,6 +27,7 @@ class HabitListLoaded extends HabitListState {
     required this.streaks,
     required this.weeklyCompletionData,
     this.celebrationMessage,
+    this.selectedDate,
   });
 
   HabitListLoaded copyWith({
@@ -34,6 +36,7 @@ class HabitListLoaded extends HabitListState {
     Map<String, int>? streaks,
     List<double>? weeklyCompletionData,
     String? celebrationMessage,
+    DateTime? selectedDate,
   }) {
     return HabitListLoaded(
       habits: habits ?? this.habits,
@@ -41,6 +44,7 @@ class HabitListLoaded extends HabitListState {
       streaks: streaks ?? this.streaks,
       weeklyCompletionData: weeklyCompletionData ?? this.weeklyCompletionData,
       celebrationMessage: celebrationMessage,
+      selectedDate: selectedDate ?? this.selectedDate,
     );
   }
 
@@ -51,6 +55,7 @@ class HabitListLoaded extends HabitListState {
         streaks,
         weeklyCompletionData,
         celebrationMessage,
+        selectedDate,
       ];
 }
 

@@ -11,7 +11,7 @@ class HabitCard extends StatelessWidget {
   final Color color;
   final int streak;
   final bool isCompleted;
-  final VoidCallback onToggle;
+  final VoidCallback? onToggle;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -22,8 +22,8 @@ class HabitCard extends StatelessWidget {
     required this.emoji,
     required this.color,
     required this.streak,
-    required this.isCompleted,
-    required this.onToggle,
+    this.isCompleted = false,
+    this.onToggle,
     this.onEdit,
     this.onDelete,
   });
@@ -51,18 +51,18 @@ class HabitCard extends StatelessWidget {
               )
             : null,
         child: GestureDetector(
-          onLongPress: onEdit,
+          onTap: onEdit,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             decoration: BoxDecoration(
               color: isCompleted
-                  ? color.withOpacity(0.08)
+                  ? color.withValues(alpha: 0.08)
                   : AppTheme.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isCompleted
-                    ? color.withOpacity(0.2)
+                    ? color.withValues(alpha: 0.2)
                     : AppTheme.border,
                 width: 1.5,
               ),
@@ -76,7 +76,7 @@ class HabitCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Center(
@@ -112,11 +112,28 @@ class HabitCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  AnimatedCheckButton(
-                    isCompleted: isCompleted,
-                    onTap: onToggle,
-                    color: color,
-                  ),
+                  if (onToggle != null)
+                    AnimatedCheckButton(
+                      isCompleted: isCompleted,
+                      onTap: onToggle!,
+                      color: color,
+                    )
+                  else if (onEdit != null || onDelete != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (onEdit != null)
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.textSecondary),
+                            onPressed: onEdit,
+                          ),
+                        if (onDelete != null)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
+                            onPressed: onDelete,
+                          ),
+                      ],
+                    ),
                 ],
               ),
             ),

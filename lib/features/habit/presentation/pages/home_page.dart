@@ -46,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _loadDataForSelectedDate(DateTime date) {
-    context.read<HabitListBloc>().add(LoadTodayHabitsEvent());
+    context.read<HabitListBloc>().add(LoadTodayHabitsEvent(date: date));
     context.read<PlannerBloc>().add(LoadPlannerTasksForDate(date));
     context.read<ReflectionBloc>().add(LoadReflectionForDate(date));
   }
@@ -1004,13 +1004,6 @@ class _HomePageState extends State<HomePage> {
                               emoji: habit.emoji,
                               color: Color(habit.colorValue),
                               streak: state.streaks[habit.id] ?? 0,
-                              isCompleted:
-                                  state.todayLogs[habit.id]?.completed ?? false,
-                              onToggle: () {
-                                context.read<HabitListBloc>().add(
-                                  ToggleHabitCompletionEvent(habit.id),
-                                );
-                              },
                               onEdit: () => _showEditHabitSheet(habit),
                               onDelete: () {
                                 context.read<HabitListBloc>().add(

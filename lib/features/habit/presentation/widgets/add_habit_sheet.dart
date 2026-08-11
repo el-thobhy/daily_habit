@@ -6,11 +6,7 @@ class AddHabitSheet extends StatefulWidget {
   final HabitEntity? habit; // null = create mode
   final Function(Map<String, dynamic>) onSave;
 
-  const AddHabitSheet({
-    super.key,
-    this.habit,
-    required this.onSave,
-  });
+  const AddHabitSheet({super.key, this.habit, required this.onSave});
 
   @override
   State<AddHabitSheet> createState() => _AddHabitSheetState();
@@ -33,8 +29,10 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
       _selectedEmoji = widget.habit!.emoji;
       _selectedDays.clear();
       _selectedDays.addAll(widget.habit!.frequency);
-      
-      final colorIdx = AppTheme.habitColors.indexWhere((c) => c.toARGB32() == widget.habit!.colorValue);
+
+      final colorIdx = AppTheme.habitColors.indexWhere(
+        (c) => c.toARGB32() == widget.habit!.colorValue,
+      );
       if (colorIdx != -1) {
         _selectedColorIndex = colorIdx;
       }
@@ -60,138 +58,140 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppTheme.border,
-              borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
 
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        widget.habit == null ? 'New Habit' : 'Edit Habit',
-                        style: Theme.of(context).textTheme.displayMedium,
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.background,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.close, size: 20),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          widget.habit == null ? 'New Habit' : 'Edit Habit',
+                          style: Theme.of(context).textTheme.displayMedium,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Name Input
-                  Text(
-                    'Habit Name',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _nameController,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.background,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.close, size: 20),
+                          ),
+                        ),
+                      ],
                     ),
-                    decoration: InputDecoration(
-                      hintText: 'e.g., Drink 8 glasses of water',
-                      hintStyle: TextStyle(
-                        color: AppTheme.textSecondary.withOpacity(0.5),
-                      ),
-                      filled: true,
-                      fillColor: AppTheme.background,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(20),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 32),
 
-                  // Emoji Selector
-                  Text(
-                    'Choose Icon',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: _emojis.map((emoji) {
-                      final isSelected = _selectedEmoji == emoji;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedEmoji = emoji),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppTheme.primary.withOpacity(0.15)
-                                : AppTheme.background,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
+                    // Name Input
+                    Text(
+                      'Habit Name',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _nameController,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'e.g., Drink 8 glasses of water',
+                        hintStyle: TextStyle(
+                          color: AppTheme.textSecondary.withOpacity(0.5),
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.background,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.all(20),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Emoji Selector
+                    Text(
+                      'Choose Icon',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _emojis.map((emoji) {
+                        final isSelected = _selectedEmoji == emoji;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedEmoji = emoji),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppTheme.primary
-                                  : Colors.transparent,
-                              width: 2,
+                                  ? AppTheme.primary.withOpacity(0.15)
+                                  : AppTheme.background,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppTheme.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                emoji,
+                                style: const TextStyle(fontSize: 28),
+                              ),
                             ),
                           ),
-                          child: Center(
-                            child: Text(
-                              emoji,
-                              style: const TextStyle(fontSize: 28),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 28),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
 
-                  // Color Selector
-                  Text(
-                    'Choose Color',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: List.generate(
-                      AppTheme.habitColors.length,
-                      (index) {
+                    // Color Selector
+                    Text(
+                      'Choose Color',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: List.generate(AppTheme.habitColors.length, (
+                        index,
+                      ) {
                         final isSelected = _selectedColorIndex == index;
                         return GestureDetector(
-                          onTap: () => setState(() => _selectedColorIndex = index),
+                          onTap: () =>
+                              setState(() => _selectedColorIndex = index),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             width: 56,
@@ -225,91 +225,91 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                                 : null,
                           ),
                         );
-                      },
+                      }),
                     ),
-                  ),
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-                  // Frequency Selector
-                  Text(
-                    'Repeat',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(7, (index) {
-                      final dayIndex = index + 1;
-                      final isSelected = _selectedDays.contains(dayIndex);
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _selectedDays.remove(dayIndex);
-                            } else {
-                              _selectedDays.add(dayIndex);
-                            }
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppTheme.primary
-                                : AppTheme.background,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _days[index][0],
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppTheme.textSecondary,
+                    // Frequency Selector
+                    Text(
+                      'Repeat',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(7, (index) {
+                        final dayIndex = index + 1;
+                        final isSelected = _selectedDays.contains(dayIndex);
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedDays.remove(dayIndex);
+                              } else {
+                                _selectedDays.add(dayIndex);
+                              }
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : AppTheme.background,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _days[index][0],
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppTheme.textSecondary,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // Save Button
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton(
-                onPressed: _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+            // Save Button
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
-                ),
-                child: Text(
-                  widget.habit == null ? 'Create Habit' : 'Save Changes',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  child: Text(
+                    widget.habit == null ? 'Create Habit' : 'Save Changes',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

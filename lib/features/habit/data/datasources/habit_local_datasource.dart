@@ -7,7 +7,7 @@ abstract class HabitLocalDataSource {
   Future<void> init();
   Future<void> createHabit(HabitDataModel habit);
   List<HabitDataModel> getAllHabits({bool includeArchived = false, String? userId});
-  List<HabitDataModel> getHabitsForToday({String? userId});
+  List<HabitDataModel> getHabitsForToday({String? userId, DateTime? date});
   Future<void> updateHabit(HabitDataModel habit);
   Future<void> archiveHabit(String id);
   Future<void> unarchiveHabit(String id);
@@ -16,6 +16,7 @@ abstract class HabitLocalDataSource {
     required bool completed,
     int countValue = 1,
     String? note,
+    DateTime? date,
   });
   HabitLogModel? getLogForDate(String habitId, DateTime date);
   List<HabitLogModel> getLogForHabit(String habitId, {int? limit});
@@ -92,10 +93,11 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   }
 
   @override
-  List<HabitDataModel> getHabitsForToday({String? userId}) {
-    final today = DateTime.now().weekday;
+  List<HabitDataModel> getHabitsForToday({String? userId, DateTime? date}) {
+    final targetDate = date ?? DateTime.now();
+    final weekday = targetDate.weekday;
     return getAllHabits(userId: userId)
-        .where((h) => h.frequency.contains(today))
+        .where((h) => h.frequency.contains(weekday))
         .toList();
   }
 
@@ -132,15 +134,16 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
     required bool completed,
     int countValue = 1,
     String? note,
+    DateTime? date,
   }) async {
     final userId = await getCurrentUserId();
-    final today = _formatDate(DateTime.now());
+    final logDate = _formatDate(date ?? DateTime.now());
     final existingLog = _logsBox.values.firstWhere(
-      (log) => log.habitId == habitId && log.date == today && (log.userId == null || log.userId == userId),
+      (log) => log.habitId == habitId && log.date == logDate && (log.userId == null || log.userId == userId),
       orElse: () => HabitLogModel(
-        id: '${habitId}_$today',
+        id: '${habitId}_$logDate',
         habitId: habitId,
-        date: today,
+        date: logDate,
         createdAt: DateTime.now(),
         userId: userId,
       ),

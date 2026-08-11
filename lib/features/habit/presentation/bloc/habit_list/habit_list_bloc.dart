@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:daily_habit/core/usecase/usecase.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_log_entity.dart';
 import 'package:daily_habit/features/habit/domain/repositories/habit_repository.dart';
@@ -39,14 +38,14 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
   ) async {
     emit(HabitListLoading());
     try {
-      final habits = await getHabitsForToday(NoParams());
-      final today = DateTime.now();
+      final selectedDate = event.date ?? DateTime.now();
+      final habits = await getHabitsForToday(selectedDate);
 
       final todayLogs = <String, HabitLogEntity?>{};
       final streaks = <String, int>{};
 
       for (final habit in habits) {
-        todayLogs[habit.id] = repository.getLogForDate(habit.id, today);
+        todayLogs[habit.id] = repository.getLogForDate(habit.id, selectedDate);
         streaks[habit.id] = repository.calculateStreak(habit.id);
       }
 
@@ -57,6 +56,7 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
         todayLogs: todayLogs,
         streaks: streaks,
         weeklyCompletionData: weeklyData,
+        selectedDate: selectedDate,
       ));
     } catch (e) {
       emit(HabitListError(e.toString()));
@@ -74,20 +74,21 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
       final habitId = event.habitId;
       final currentLog = currentState.todayLogs[habitId];
       final newCompleted = !(currentLog?.completed ?? false);
+      final targetDate = currentState.selectedDate ?? DateTime.now();
 
       await logHabit(LogHabitParams(
         habitId: habitId,
         completed: newCompleted,
         countValue: 1,
+        date: targetDate,
       ));
 
       final newStreak = repository.calculateStreak(habitId);
-      final today = DateTime.now();
 
       final newLog = HabitLogEntity(
-        id: '${habitId}_${_formatDate(today)}',
+        id: '${habitId}_${_formatDate(targetDate)}',
         habitId: habitId,
-        date: _formatDate(today),
+        date: _formatDate(targetDate),
         completed: newCompleted,
         countValue: 1,
         completedAt: newCompleted ? DateTime.now() : null,
@@ -124,7 +125,8 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
   ) async {
     try {
       await createHabit(event.habit);
-      add(LoadTodayHabitsEvent());
+      final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
+      add(LoadTodayHabitsEvent(date: currentDate));
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -136,7 +138,8 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
   ) async {
     try {
       await updateHabit(event.habit);
-      add(LoadTodayHabitsEvent());
+      final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
+      add(LoadTodayHabitsEvent(date: currentDate));
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -148,7 +151,8 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
   ) async {
     try {
       await archiveHabit(event.habitId);
-      add(LoadTodayHabitsEvent());
+      final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
+      add(LoadTodayHabitsEvent(date: currentDate));
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -160,7 +164,8 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
   ) async {
     try {
       await unarchiveHabit(event.habitId);
-      add(LoadTodayHabitsEvent());
+      final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
+      add(LoadTodayHabitsEvent(date: currentDate));
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
