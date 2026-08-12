@@ -8,6 +8,7 @@ class PlannerTaskModel {
   final String? timeString;
   final bool isCompleted;
   final String category;
+  final String userId;
 
   PlannerTaskModel({
     required this.id,
@@ -17,6 +18,7 @@ class PlannerTaskModel {
     this.timeString,
     required this.isCompleted,
     required this.category,
+    required this.userId,
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +30,7 @@ class PlannerTaskModel {
       'timeString': timeString,
       'isCompleted': isCompleted,
       'category': category,
+      'userId': userId,
     };
   }
 
@@ -40,6 +43,7 @@ class PlannerTaskModel {
       timeString: map['timeString'] as String?,
       isCompleted: map['isCompleted'] as bool? ?? false,
       category: map['category'] as String? ?? 'General',
+      userId: map['userId'] as String,
     );
   }
 
@@ -52,11 +56,13 @@ class PlannerTaskModel {
       timeString: timeString,
       isCompleted: isCompleted,
       category: category,
+      userId: userId,
     );
   }
 
   factory PlannerTaskModel.fromEntity(PlannerTaskEntity entity) {
-    final dateStr = "${entity.date.year.toString().padLeft(4, '0')}-${entity.date.month.toString().padLeft(2, '0')}-${entity.date.day.toString().padLeft(2, '0')}";
+    final dateStr =
+        "${entity.date.year.toString().padLeft(4, '0')}-${entity.date.month.toString().padLeft(2, '0')}-${entity.date.day.toString().padLeft(2, '0')}";
     return PlannerTaskModel(
       id: entity.id,
       title: entity.title,
@@ -65,6 +71,7 @@ class PlannerTaskModel {
       timeString: entity.timeString,
       isCompleted: entity.isCompleted,
       category: entity.category,
+      userId: entity.userId,
     );
   }
 }

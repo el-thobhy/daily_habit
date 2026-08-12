@@ -6,6 +6,7 @@ class DailyReflectionEntity extends Equatable {
   final String todayLesson;
   final String memorableNotes;
   final int moodRating;
+  final String userId;
 
   const DailyReflectionEntity({
     required this.id,
@@ -13,6 +14,7 @@ class DailyReflectionEntity extends Equatable {
     this.todayLesson = '',
     this.memorableNotes = '',
     this.moodRating = 5,
+    this.userId = '',
   });
 
   DailyReflectionEntity copyWith({
@@ -21,6 +23,7 @@ class DailyReflectionEntity extends Equatable {
     String? todayLesson,
     String? memorableNotes,
     int? moodRating,
+    String? userId,
   }) {
     return DailyReflectionEntity(
       id: id ?? this.id,
@@ -28,9 +31,17 @@ class DailyReflectionEntity extends Equatable {
       todayLesson: todayLesson ?? this.todayLesson,
       memorableNotes: memorableNotes ?? this.memorableNotes,
       moodRating: moodRating ?? this.moodRating,
+      userId: userId ?? this.userId,
     );
   }
 
   @override
-  List<Object?> get props => [id, date, todayLesson, memorableNotes, moodRating];
+  List<Object?> get props => [
+    id,
+    date,
+    todayLesson,
+    memorableNotes,
+    moodRating,
+    userId,
+  ];
 }

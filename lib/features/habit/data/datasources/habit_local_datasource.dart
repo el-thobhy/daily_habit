@@ -62,6 +62,9 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
       if (id != null && id.isNotEmpty) {
         _cachedUserId = id;
         return id;
+      } else {
+        _cachedUserId = null;
+        return null;
       }
     }
     return _cachedUserId;

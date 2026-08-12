@@ -57,6 +57,7 @@ class _AddPlannerTaskSheetState extends State<AddPlannerTaskSheet> {
       date: widget.selectedDate,
       timeString: timeStr,
       category: _selectedCategory,
+      
     );
 
     widget.onTaskAdded(task);

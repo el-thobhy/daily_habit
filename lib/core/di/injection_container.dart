@@ -40,7 +40,7 @@ Future<void> initDI() async {
   await localDataSource.init();
   sl.registerSingleton<HabitLocalDataSource>(localDataSource);
 
-  final plannerLocalDataSource = PlannerLocalDataSourceImpl();
+  final plannerLocalDataSource = PlannerLocalDataSourceImpl(secureStorage: sl());
   await plannerLocalDataSource.init();
   sl.registerSingleton<PlannerLocalDataSource>(plannerLocalDataSource);
 
@@ -61,7 +61,13 @@ Future<void> initDI() async {
   );
 
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
+    () => AuthRepositoryImpl(
+      remoteDataSource: sl(),
+      localDataSource: sl(),
+      habitLocalDataSource: sl(),
+      plannerLocalDataSource: sl(),
+      notificationService: sl(),
+    ),
   );
 
   // Use cases (Habit)

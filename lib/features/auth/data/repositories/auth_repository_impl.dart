@@ -1,17 +1,31 @@
+import 'package:daily_habit/core/services/notification_service.dart';
 import 'package:daily_habit/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:daily_habit/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:daily_habit/features/auth/data/models/user_model.dart';
 import 'package:daily_habit/features/auth/domain/entities/user_entity.dart';
 import 'package:daily_habit/features/auth/domain/repositories/auth_repository.dart';
+import 'package:daily_habit/features/habit/data/datasources/habit_local_datasource.dart';
+import 'package:daily_habit/features/planner/data/datasources/planner_local_datasource.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final AuthLocalDataSource localDataSource;
+  final HabitLocalDataSource habitLocalDataSource;
+  final PlannerLocalDataSource plannerLocalDataSource;
+  final NotificationService notificationService;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
+    required this.habitLocalDataSource,
+    required this.plannerLocalDataSource,
+    required this.notificationService,
   });
+
+  Future<void> _refreshUserCache() async {
+    await habitLocalDataSource.getCurrentUserId();
+    await plannerLocalDataSource.getCurrentUserId();
+  }
 
   @override
   Future<UserEntity> login(String email, String password) async {
@@ -20,6 +34,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final UserModel user = result['user'];
 
     await localDataSource.saveSession(token, user);
+    await _refreshUserCache();
     return user.toEntity();
   }
 
@@ -35,6 +50,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final UserModel user = result['user'];
 
     await localDataSource.saveSession(token, user);
+    await _refreshUserCache();
     return user.toEntity();
   }
 
@@ -62,5 +78,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     await localDataSource.clearSession();
+    await _refreshUserCache();
+    await notificationService.cancelAllNotifications();
   }
 }

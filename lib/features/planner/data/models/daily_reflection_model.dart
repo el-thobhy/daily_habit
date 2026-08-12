@@ -6,6 +6,7 @@ class DailyReflectionModel {
   final String todayLesson;
   final String memorableNotes;
   final int moodRating;
+  final String userId;
 
   DailyReflectionModel({
     required this.id,
@@ -13,6 +14,7 @@ class DailyReflectionModel {
     required this.todayLesson,
     required this.memorableNotes,
     required this.moodRating,
+    required this.userId,
   });
 
   Map<String, dynamic> toMap() {
@@ -22,6 +24,7 @@ class DailyReflectionModel {
       'todayLesson': todayLesson,
       'memorableNotes': memorableNotes,
       'moodRating': moodRating,
+      'userId': userId,
     };
   }
 
@@ -32,6 +35,7 @@ class DailyReflectionModel {
       todayLesson: map['todayLesson'] as String? ?? '',
       memorableNotes: map['memorableNotes'] as String? ?? '',
       moodRating: map['moodRating'] as int? ?? 5,
+      userId: map['userId'] as String? ?? '',
     );
   }
 
@@ -42,17 +46,20 @@ class DailyReflectionModel {
       todayLesson: todayLesson,
       memorableNotes: memorableNotes,
       moodRating: moodRating,
+      userId: userId,
     );
   }
 
   factory DailyReflectionModel.fromEntity(DailyReflectionEntity entity) {
-    final dateStr = "${entity.date.year.toString().padLeft(4, '0')}-${entity.date.month.toString().padLeft(2, '0')}-${entity.date.day.toString().padLeft(2, '0')}";
+    final dateStr =
+        "${entity.date.year.toString().padLeft(4, '0')}-${entity.date.month.toString().padLeft(2, '0')}-${entity.date.day.toString().padLeft(2, '0')}";
     return DailyReflectionModel(
       id: entity.id,
       dateIso: dateStr,
       todayLesson: entity.todayLesson,
       memorableNotes: entity.memorableNotes,
       moodRating: entity.moodRating,
+      userId: entity.userId,
     );
   }
 }

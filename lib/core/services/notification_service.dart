@@ -257,4 +257,12 @@ class NotificationService {
       debugPrint(stackTrace.toString());
     }
   }
+
+  // 4. Membatalkan Semua Notifikasi Task (Saat Logout)
+  Future<void> cancelAllNotifications() async {
+    try {
+      await _notificationsPlugin.cancelAll();
+      await scheduleDailyNotifications();
+    } catch (_) {}
+  }
 }
