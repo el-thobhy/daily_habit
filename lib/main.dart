@@ -5,6 +5,7 @@ import 'package:daily_habit/features/auth/presentation/views/splash_screen.dart'
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_bloc.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,7 +13,9 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await MobileAds.instance.initialize(); //Inisialisasi Admob
+  if (!kIsWeb) {
+    await MobileAds.instance.initialize(); // Inisialisasi Admob
+  }
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
