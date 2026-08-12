@@ -1,4 +1,5 @@
 import 'package:daily_habit/core/theme/app_theme.dart';
+import 'package:daily_habit/core/widgets/ad_banner_widget.dart';
 import 'package:daily_habit/core/widgets/habit_card.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_event.dart';
@@ -453,6 +454,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           const SizedBox(width: 24),
+                          const AdBannerWidget(),
                           // Right Column: Habits & Tasks
                           Expanded(
                             flex: 6,
@@ -470,6 +472,8 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 20),
+                      const AdBannerWidget(),
                     ],
                   ),
                 ),
@@ -524,7 +528,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                   sliver: _buildTasksListSliver(),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: AdBannerWidget(),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1221,6 +1231,10 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: AdBannerWidget(),
+              ),
               Expanded(
                 child: habits.isEmpty
                     ? Center(
@@ -1264,41 +1278,46 @@ class _HomePageState extends State<HomePage> {
 
   // --- BOTTOM NAVIGATION BAR ---
   Widget _buildBottomNav() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: AppTheme.elevatedShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() => _selectedIndex = index);
-          },
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: AppTheme.primary,
-          unselectedItemColor: AppTheme.textSecondary,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today_rounded),
-              label: 'Planner',
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: AppTheme.elevatedShadow,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() => _selectedIndex = index);
+              },
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              selectedItemColor: AppTheme.primary,
+              unselectedItemColor: AppTheme.textSecondary,
+              type: BottomNavigationBarType.fixed,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_today_rounded),
+                  label: 'Planner',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.check_circle_outline_rounded),
+                  label: 'Habits',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.insights_rounded),
+                  label: 'Stats',
+                ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.check_circle_outline_rounded),
-              label: 'Habits',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.insights_rounded),
-              label: 'Stats',
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:daily_habit/core/di/injection_container.dart';
 import 'package:daily_habit/core/theme/app_theme.dart';
+import 'package:daily_habit/core/widgets/ad_banner_widget.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_stats/habit_stats_bloc.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_stats/habit_stats_event.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_stats/habit_stats_state.dart';
@@ -345,6 +346,8 @@ class _StatsView extends StatelessWidget {
                     ),
                   ).animate().fadeIn().slideY(begin: 0.2, end: 0),
 
+                  const SizedBox(height: 24),
+                  const AdBannerWidget(),
                   const SizedBox(height: 24),
 
                   if (loadedState.habits.isNotEmpty)

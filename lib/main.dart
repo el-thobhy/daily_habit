@@ -8,9 +8,11 @@ import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflec
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize(); //Inisialisasi Admob
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -32,18 +34,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (_) => sl<AuthBloc>(),
-        ),
-        BlocProvider<HabitListBloc>(
-          create: (_) => sl<HabitListBloc>(),
-        ),
-        BlocProvider<PlannerBloc>(
-          create: (_) => sl<PlannerBloc>(),
-        ),
-        BlocProvider<ReflectionBloc>(
-          create: (_) => sl<ReflectionBloc>(),
-        ),
+        BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
+        BlocProvider<HabitListBloc>(create: (_) => sl<HabitListBloc>()),
+        BlocProvider<PlannerBloc>(create: (_) => sl<PlannerBloc>()),
+        BlocProvider<ReflectionBloc>(create: (_) => sl<ReflectionBloc>()),
       ],
       child: MaterialApp(
         title: 'Daily Planner',
@@ -62,4 +56,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
