@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Colors
@@ -28,21 +27,21 @@ class AppTheme {
     Color(0xFFF97316), // Orange
     Color(0xFF06B6D4), // Cyan
   ];
-   // Typography
-  static TextTheme get textTheme => GoogleFonts.interTextTheme().copyWith(
-    displayLarge: GoogleFonts.inter(
+  // Typography
+  static TextTheme get textTheme => const TextTheme(
+    displayLarge: TextStyle(
       fontSize: 32, fontWeight: FontWeight.bold, color: textPrimary,
     ),
-    displayMedium: GoogleFonts.inter(
+    displayMedium: TextStyle(
       fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary,
     ),
-    titleLarge: GoogleFonts.inter(
+    titleLarge: TextStyle(
       fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary,
     ),
-    bodyLarge: GoogleFonts.inter(
+    bodyLarge: TextStyle(
       fontSize: 16, fontWeight: FontWeight.normal, color: textPrimary,
     ),
-    bodyMedium: GoogleFonts.inter(
+    bodyMedium: TextStyle(
       fontSize: 14, fontWeight: FontWeight.normal, color: textSecondary,
     ),
   );
