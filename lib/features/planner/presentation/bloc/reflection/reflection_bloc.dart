@@ -1,6 +1,8 @@
+import 'package:daily_habit/core/di/injection_container.dart';
 import 'package:daily_habit/features/planner/domain/usecases/planner_usecases.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_event.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_state.dart';
+import 'package:daily_habit/features/sync/presentation/cubit/sync_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ReflectionBloc extends Bloc<ReflectionEvent, ReflectionState> {
@@ -30,6 +32,7 @@ class ReflectionBloc extends Bloc<ReflectionEvent, ReflectionState> {
       await saveReflection(event.reflection);
       emit(ReflectionSaved(event.reflection));
       add(LoadReflectionForDate(event.reflection.date));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(ReflectionError(e.toString()));
     }
