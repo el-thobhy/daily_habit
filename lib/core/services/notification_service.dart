@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -13,6 +14,11 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
+    if (kIsWeb) {
+      debugPrint('Web platform detected, skipping local notification & timezone initialization.');
+      return;
+    }
+
     tz.initializeTimeZones();
 
     // 🔹 Dapatkan zona waktu asli dari perangkat (misal: "Asia/Jakarta")
