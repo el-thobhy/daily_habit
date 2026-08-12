@@ -1,7 +1,9 @@
+import 'package:daily_habit/core/di/injection_container.dart';
 import 'package:daily_habit/core/services/notification_service.dart';
 import 'package:daily_habit/features/planner/domain/usecases/planner_usecases.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_event.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_state.dart';
+import 'package:daily_habit/features/sync/presentation/cubit/sync_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class PlannerBloc extends Bloc<PlannerEvent, PlannerState> {
@@ -55,6 +57,7 @@ class PlannerBloc extends Bloc<PlannerEvent, PlannerState> {
       }
 
       add(LoadPlannerTasksForDate(event.task.date));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(PlannerError(e.toString()));
     }
@@ -81,6 +84,7 @@ class PlannerBloc extends Bloc<PlannerEvent, PlannerState> {
       }
 
       add(LoadPlannerTasksForDate(event.task.date));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(PlannerError(e.toString()));
     }
@@ -97,6 +101,7 @@ class PlannerBloc extends Bloc<PlannerEvent, PlannerState> {
       notificationService.cancelTaskNotification(event.taskId);
 
       add(LoadPlannerTasksForDate(event.currentDate));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(PlannerError(e.toString()));
     }

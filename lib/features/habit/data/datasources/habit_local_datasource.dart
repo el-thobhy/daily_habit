@@ -6,7 +6,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 abstract class HabitLocalDataSource {
   Future<void> init();
   Future<void> createHabit(HabitDataModel habit);
-  List<HabitDataModel> getAllHabits({bool includeArchived = false, String? userId});
+  List<HabitDataModel> getAllHabits({
+    bool includeArchived = false,
+    String? userId,
+  });
   List<HabitDataModel> getHabitsForToday({String? userId, DateTime? date});
   Future<void> updateHabit(HabitDataModel habit);
   Future<void> archiveHabit(String id);
@@ -25,6 +28,10 @@ abstract class HabitLocalDataSource {
   int calculateStreak(String habitId);
   Future<void> clearAll();
   Future<String?> getCurrentUserId();
+  Future<List<Map<String, dynamic>>> getUnsyncedHabitsJson();
+  Future<List<Map<String, dynamic>>> getUnsyncedLogsJson();
+  Future<void> upsertHabitsFromSync(List<dynamic> habitsJson);
+  Future<void> upsertLogsFromSync(List<dynamic> logsJson);
 }
 
 class HabitLocalDataSourceImpl implements HabitLocalDataSource {
@@ -79,12 +86,17 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   }
 
   @override
-  List<HabitDataModel> getAllHabits({bool includeArchived = false, String? userId}) {
+  List<HabitDataModel> getAllHabits({
+    bool includeArchived = false,
+    String? userId,
+  }) {
     final targetUserId = userId ?? _cachedUserId;
     var habits = _habitsBox.values.toList();
 
     if (targetUserId != null && targetUserId.isNotEmpty) {
-      habits = habits.where((h) => h.userId == null || h.userId == targetUserId).toList();
+      habits = habits
+          .where((h) => h.userId == null || h.userId == targetUserId)
+          .toList();
     }
 
     habits.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -99,9 +111,9 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   List<HabitDataModel> getHabitsForToday({String? userId, DateTime? date}) {
     final targetDate = date ?? DateTime.now();
     final weekday = targetDate.weekday;
-    return getAllHabits(userId: userId)
-        .where((h) => h.frequency.contains(weekday))
-        .toList();
+    return getAllHabits(
+      userId: userId,
+    ).where((h) => h.frequency.contains(weekday)).toList();
   }
 
   @override
@@ -142,7 +154,10 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
     final userId = await getCurrentUserId();
     final logDate = _formatDate(date ?? DateTime.now());
     final existingLog = _logsBox.values.firstWhere(
-      (log) => log.habitId == habitId && log.date == logDate && (log.userId == null || log.userId == userId),
+      (log) =>
+          log.habitId == habitId &&
+          log.date == logDate &&
+          (log.userId == null || log.userId == userId),
       orElse: () => HabitLogModel(
         id: '${habitId}_$logDate',
         habitId: habitId,
@@ -167,7 +182,10 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
     final dateStr = _formatDate(date);
     try {
       return _logsBox.values.firstWhere(
-        (log) => log.habitId == habitId && log.date == dateStr && (log.userId == null || log.userId == _cachedUserId),
+        (log) =>
+            log.habitId == habitId &&
+            log.date == dateStr &&
+            (log.userId == null || log.userId == _cachedUserId),
       );
     } catch (e) {
       return null;
@@ -176,10 +194,15 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
 
   @override
   List<HabitLogModel> getLogForHabit(String habitId, {int? limit}) {
-    final logs = _logsBox.values
-        .where((log) => log.habitId == habitId && (log.userId == null || log.userId == _cachedUserId))
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final logs =
+        _logsBox.values
+            .where(
+              (log) =>
+                  log.habitId == habitId &&
+                  (log.userId == null || log.userId == _cachedUserId),
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     if (limit != null) {
       return logs.take(limit).toList();
@@ -191,7 +214,11 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
   List<HabitLogModel?> getLogsForDate(DateTime date) {
     final dateStr = _formatDate(date);
     return _logsBox.values
-        .where((log) => log.date == dateStr && (log.userId == null || log.userId == _cachedUserId))
+        .where(
+          (log) =>
+              log.date == dateStr &&
+              (log.userId == null || log.userId == _cachedUserId),
+        )
         .toList();
   }
 
@@ -256,5 +283,113 @@ class HabitLocalDataSourceImpl implements HabitLocalDataSource {
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getUnsyncedHabitsJson() async {
+    final userId = await getCurrentUserId();
+    if (userId == null || userId.isEmpty) return [];
+
+    final habits = _habitsBox.values
+        .where((h) => h.userId == userId)
+        .map(
+          (h) => {
+            'id': h.id,
+            'user_id': h.userId ?? userId,
+            'title': h.name,
+            'icon_name': h.emoji,
+            'color_hex': '#${h.colorValue.toRadixString(16).padLeft(8, '0')}',
+            'target_days': h.targetCount,
+            'category': h.categoryId ?? 'General',
+            'frequency_type': 'daily',
+            'reminder_time': h.reminderTime,
+            'is_archived': h.isArchived,
+            'created_at': h.createdAt.toUtc().toIso8601String(),
+            'updated_at': h.updatedAt.toUtc().toIso8601String(),
+          },
+        )
+        .toList();
+
+    return habits;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getUnsyncedLogsJson() async {
+    final userId = await getCurrentUserId();
+    if (userId == null || userId.isEmpty) return [];
+    final logs = _logsBox.values
+        .where((l) => l.userId == userId)
+        .map(
+          (l) {
+            final dateParts = l.date.split('-');
+            final dateTime = dateParts.length == 3
+                ? DateTime.utc(
+                    int.parse(dateParts[0]),
+                    int.parse(dateParts[1]),
+                    int.parse(dateParts[2]),
+                  )
+                : DateTime.now().toUtc();
+            return {
+              'id': l.id,
+              'user_id': l.userId ?? userId,
+              'habit_id': l.habitId,
+              'date': dateTime.toIso8601String(),
+              'is_done': l.completed,
+              'notes': l.note ?? '',
+              'updated_at': (l.completedAt ?? l.createdAt).toUtc().toIso8601String(),
+            };
+          },
+        )
+        .toList();
+    return logs;
+  }
+
+  @override
+  Future<void> upsertHabitsFromSync(List<dynamic> habitsJson) async {
+    final currentUserId = await getCurrentUserId();
+    if (currentUserId == null) return;
+    for (var item in habitsJson) {
+      final colorHexStr = (item['color_hex'] as String? ?? '').replaceAll('#', '');
+      final colorInt = int.tryParse(colorHexStr, radix: 16) ?? 4280391411;
+
+      final model = HabitDataModel(
+        id: item['id'],
+        name: item['title'] ?? '',
+        emoji: item['icon_name'] ?? '⭐',
+        colorValue: colorInt,
+        frequency: const [1, 2, 3, 4, 5, 6, 7],
+        targetCount: item['target_days'] ?? 1,
+        reminderTime: item['reminder_time'],
+        isArchived: item['is_archived'] ?? false,
+        createdAt: DateTime.parse(item['created_at']),
+        updatedAt: DateTime.parse(item['updated_at']),
+        userId: currentUserId,
+      );
+      await _habitsBox.put(model.id, model);
+    }
+  }
+
+  @override
+  Future<void> upsertLogsFromSync(List<dynamic> logsJson) async {
+    final currentUserId = await getCurrentUserId();
+    if (currentUserId == null) return;
+    for (var item in logsJson) {
+      final dateStr = item['date'] != null
+          ? item['date'].toString().split('T').first
+          : _formatDate(DateTime.now());
+
+      final model = HabitLogModel(
+        id: item['id'],
+        habitId: item['habit_id'],
+        date: dateStr,
+        completed: item['is_done'] ?? false,
+        countValue: 1,
+        note: item['notes'],
+        completedAt: item['updated_at'] != null ? DateTime.parse(item['updated_at']) : null,
+        createdAt: DateTime.parse(item['updated_at'] ?? DateTime.now().toIso8601String()),
+        userId: currentUserId,
+      );
+      await _logsBox.put(model.id, model);
+    }
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:daily_habit/core/di/injection_container.dart';
+import 'package:daily_habit/features/sync/presentation/cubit/sync_cubit.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_log_entity.dart';
 import 'package:daily_habit/features/habit/domain/repositories/habit_repository.dart';
@@ -114,6 +116,7 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
         weeklyCompletionData: updatedWeeklyData,
         celebrationMessage: celebrationStreak != null ? '$celebrationStreak Day Streak!' : null,
       ));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -127,6 +130,7 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
       await createHabit(event.habit);
       final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
       add(LoadTodayHabitsEvent(date: currentDate));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -140,6 +144,7 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
       await updateHabit(event.habit);
       final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
       add(LoadTodayHabitsEvent(date: currentDate));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -153,6 +158,7 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
       await archiveHabit(event.habitId);
       final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
       add(LoadTodayHabitsEvent(date: currentDate));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(HabitListError(e.toString()));
     }
@@ -166,6 +172,7 @@ class HabitListBloc extends Bloc<HabitListEvent, HabitListState> {
       await unarchiveHabit(event.habitId);
       final currentDate = state is HabitListLoaded ? (state as HabitListLoaded).selectedDate : null;
       add(LoadTodayHabitsEvent(date: currentDate));
+      sl<SyncCubit>().sync();
     } catch (e) {
       emit(HabitListError(e.toString()));
     }

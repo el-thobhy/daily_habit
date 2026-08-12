@@ -19,6 +19,10 @@ import 'package:daily_habit/features/planner/domain/repositories/planner_reposit
 import 'package:daily_habit/features/planner/domain/usecases/planner_usecases.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/planner/planner_bloc.dart';
 import 'package:daily_habit/features/planner/presentation/bloc/reflection/reflection_bloc.dart';
+import 'package:daily_habit/features/sync/data/datasources/sync_remote_datasource.dart';
+import 'package:daily_habit/features/sync/data/repositories/sync_repository_impl.dart';
+import 'package:daily_habit/features/sync/domain/usecases/perform_sync_usecase.dart';
+import 'package:daily_habit/features/sync/presentation/cubit/sync_cubit.dart';
 import 'package:get_it/get_it.dart';
 
 final sl = GetIt.instance;
@@ -137,4 +141,22 @@ Future<void> initDI() async {
   sl.registerFactory(
     () => ReflectionBloc(getReflectionForDate: sl(), saveReflection: sl()),
   );
+
+  // Sync Feature
+  sl.registerLazySingleton<SyncRemoteDataSource>(
+    () => SyncRemoteDataSourceImpl(apiClient: sl()),
+  );
+
+  sl.registerLazySingleton<SyncRepository>(
+    () => SyncRepositoryImpl(
+      remoteDataSource: sl(),
+      habitLocalDataSource: sl(),
+      plannerLocalDataSource: sl(),
+      secureStorage: sl(),
+    ),
+  );
+
+  sl.registerLazySingleton(() => PerformSyncUseCase(sl()));
+
+  sl.registerLazySingleton(() => SyncCubit(performSyncUseCase: sl()));
 }

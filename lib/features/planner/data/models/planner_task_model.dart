@@ -7,6 +7,7 @@ class PlannerTaskModel {
   final String dateIso;
   final String? timeString;
   final bool isCompleted;
+  final bool isDeleted;
   final String category;
   final String userId;
 
@@ -17,6 +18,7 @@ class PlannerTaskModel {
     required this.dateIso,
     this.timeString,
     required this.isCompleted,
+    this.isDeleted = false,
     required this.category,
     required this.userId,
   });
@@ -29,6 +31,7 @@ class PlannerTaskModel {
       'dateIso': dateIso,
       'timeString': timeString,
       'isCompleted': isCompleted,
+      'isDeleted': isDeleted,
       'category': category,
       'userId': userId,
     };
@@ -42,6 +45,7 @@ class PlannerTaskModel {
       dateIso: map['dateIso'] as String,
       timeString: map['timeString'] as String?,
       isCompleted: map['isCompleted'] as bool? ?? false,
+      isDeleted: map['isDeleted'] as bool? ?? false,
       category: map['category'] as String? ?? 'General',
       userId: map['userId'] as String,
     );

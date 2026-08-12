@@ -36,6 +36,14 @@ class SecureStorageService {
     return {'id': id, 'name': name, 'email': email};
   }
 
+  Future<void> saveCustomKey(String key, String value) async {
+    await _storage.write(key: key, value: value);
+  }
+
+  Future<String?> getCustomKey(String key) async {
+    return await _storage.read(key: key);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

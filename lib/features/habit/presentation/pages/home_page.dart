@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:daily_habit/core/di/injection_container.dart';
+import 'package:daily_habit/features/sync/presentation/cubit/sync_cubit.dart';
 import 'package:uuid/uuid.dart';
 
 class HomePage extends StatefulWidget {
@@ -43,6 +45,14 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadDataForSelectedDate(_selectedDate);
+    _triggerSync();
+  }
+
+  Future<void> _triggerSync() async {
+    final success = await sl<SyncCubit>().sync();
+    if (mounted && success) {
+      _loadDataForSelectedDate(_selectedDate);
+    }
   }
 
   void _loadDataForSelectedDate(DateTime date) {
@@ -410,6 +420,7 @@ class _HomePageState extends State<HomePage> {
 
     return RefreshIndicator(
       onRefresh: () async {
+        await _triggerSync();
         _loadDataForSelectedDate(_selectedDate);
       },
       color: AppTheme.primary,
@@ -552,6 +563,7 @@ class _HomePageState extends State<HomePage> {
         final displayName = state is Authenticated ? state.user.name : '';
 
         return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
@@ -566,41 +578,174 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _getGreeting() + " " + displayName,
+                    '${_getGreeting()} $displayName',
                     style: AppTheme.textTheme.bodyMedium,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                formattedDate,
-                style: const TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        formattedDate,
+                        style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.logout_rounded,
+                        color: AppTheme.danger,
+                        size: 20,
+                      ),
+                      tooltip: 'Keluar (Logout)',
+                      onPressed: () {
+                        context.read<AuthBloc>().add(LogoutEvent());
+                      },
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            IconButton(
-              icon: const Icon(
-                Icons.logout_rounded,
-                color: AppTheme.danger,
-                size: 20,
-              ),
-              tooltip: 'Keluar (Logout)',
-              onPressed: () {
-                context.read<AuthBloc>().add(LogoutEvent());
-              },
+                const SizedBox(height: 4),
+                _buildSyncStatusBadge(),
+              ],
             ),
           ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSyncStatusBadge() {
+    return BlocBuilder<SyncCubit, SyncState>(
+      bloc: sl<SyncCubit>(),
+      builder: (context, state) {
+        if (state is SyncingState) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'Syncing...',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        } else if (state is SyncSuccessState) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.success.withValues(alpha: 0.3),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_done_rounded,
+                  color: AppTheme.success,
+                  size: 14,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Synced',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.success,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        } else if (state is SyncErrorState) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.warning.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.warning.withValues(alpha: 0.3),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_off_rounded,
+                  color: AppTheme.warning,
+                  size: 14,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Offline Mode',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.warning,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return InkWell(
+          onTap: _triggerSync,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.sync_rounded,
+              size: 18,
+              color: AppTheme.textSecondary,
+            ),
+          ),
         );
       },
     );
