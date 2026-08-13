@@ -241,6 +241,7 @@ class _HomePageState extends State<HomePage> {
 
   void _showReflectionSheet(DailyReflectionEntity? existing) {
     showModalBottomSheet(
+      isDismissible: false,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
