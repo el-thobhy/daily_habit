@@ -16,9 +16,9 @@ class AdHelper {
 
   // ID Production dari AdMob Console
   static const String _androidProductionBannerId =
-      'ca-app-pub-3940256099942544/6300978111';
+      'ca-app-pub-9084606382966168/9740401408';
   static const String _iOSProductionBannerId =
-      'ca-app-pub-3940256099942544/2934735716';
+      'ca-app-pub-9084606382966168/9740401408';
 
   static const String _androidProductionRewardedId =
       'ca-app-pub-3940256099942544/5224354917';
