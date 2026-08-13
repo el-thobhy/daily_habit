@@ -241,16 +241,20 @@ class _HomePageState extends State<HomePage> {
 
   void _showReflectionSheet(DailyReflectionEntity? existing) {
     showModalBottomSheet(
-      isDismissible: false,
       context: context,
+      isDismissible: false,
+      enableDrag: false,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DailyReflectionSheet(
-        date: _selectedDate,
-        existingReflection: existing,
-        onSave: (reflection) {
-          context.read<ReflectionBloc>().add(SaveReflectionEvent(reflection));
-        },
+      builder: (context) => PopScope(
+        canPop: false,
+        child: DailyReflectionSheet(
+          date: _selectedDate,
+          existingReflection: existing,
+          onSave: (reflection) {
+            context.read<ReflectionBloc>().add(SaveReflectionEvent(reflection));
+          },
+        ),
       ),
     );
   }
