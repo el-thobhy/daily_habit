@@ -34,7 +34,9 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
     _lessonController = TextEditingController(
       text: widget.existingReflection?.todayLesson ?? '',
     );
-    _quillController = _initQuillController(widget.existingReflection?.memorableNotes);
+    _quillController = _initQuillController(
+      widget.existingReflection?.memorableNotes,
+    );
     _moodRating = widget.existingReflection?.moodRating ?? 5;
   }
 
@@ -67,7 +69,9 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
   }
 
   void _submit() {
-    final notesDeltaJson = jsonEncode(_quillController.document.toDelta().toJson());
+    final notesDeltaJson = jsonEncode(
+      _quillController.document.toDelta().toJson(),
+    );
 
     final reflection = DailyReflectionEntity(
       id: widget.existingReflection?.id ?? const Uuid().v4(),
@@ -157,11 +161,17 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
                 ),
                 child: Column(
                   children: [
-                    QuillSimpleToolbar(
-                      controller: _quillController,
-                      config: const QuillSimpleToolbarConfig(
-                        showSmallButton: true,
-                        showInlineCode: false,
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: QuillSimpleToolbar(
+                        controller: _quillController,
+                        config: const QuillSimpleToolbarConfig(
+                          toolbarIconAlignment: WrapAlignment.start,
+                          toolbarIconCrossAlignment: WrapCrossAlignment.center,
+                          axis: Axis.horizontal,
+                          showSmallButton: true,
+                          showInlineCode: false,
+                        ),
                       ),
                     ),
                     const Divider(height: 1, color: AppTheme.border),
@@ -173,7 +183,8 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
                         scrollController: _editorScrollController,
                         focusNode: _editorFocusNode,
                         config: const QuillEditorConfig(
-                          placeholder: 'Momen atau ucapan syukur apa yang terjadi hari ini...',
+                          placeholder:
+                              'Momen atau ucapan syukur apa yang terjadi hari ini...',
                         ),
                       ),
                     ),
