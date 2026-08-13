@@ -4,7 +4,6 @@ import 'package:daily_habit/core/widgets/habit_card.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_event.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_state.dart';
-import 'package:daily_habit/features/auth/presentation/views/login_screen.dart';
 import 'package:daily_habit/features/habit/domain/entities/habit_entity.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_bloc.dart';
 import 'package:daily_habit/features/habit/presentation/bloc/habit_list/habit_list_event.dart';
@@ -29,6 +28,8 @@ import 'package:intl/intl.dart';
 import 'package:daily_habit/core/di/injection_container.dart';
 import 'package:daily_habit/features/sync/presentation/cubit/sync_cubit.dart';
 import 'package:uuid/uuid.dart';
+
+import 'package:daily_habit/features/landing/presentation/pages/landing_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -281,7 +282,7 @@ class _HomePageState extends State<HomePage> {
       listener: (context, state) {
         if (state is Unauthenticated) {
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            MaterialPageRoute(builder: (_) => const LandingPage()),
             (route) => false,
           );
         }

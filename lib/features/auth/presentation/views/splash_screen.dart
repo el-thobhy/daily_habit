@@ -2,11 +2,12 @@ import 'package:daily_habit/core/theme/app_theme.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_event.dart';
 import 'package:daily_habit/features/auth/presentation/bloc/auth_state.dart';
-import 'package:daily_habit/features/auth/presentation/views/login_screen.dart';
 import 'package:daily_habit/features/habit/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:daily_habit/features/landing/presentation/pages/landing_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -32,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
           );
         } else if (state is Unauthenticated || state is AuthError) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            MaterialPageRoute(builder: (_) => const LandingPage()),
           );
         }
       },

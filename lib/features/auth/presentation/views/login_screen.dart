@@ -94,8 +94,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is Authenticated) {
-          Navigator.of(context).pushReplacement(
+          Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomePage()),
+            (route) => false,
           );
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
