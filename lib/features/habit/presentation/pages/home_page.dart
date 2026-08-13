@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:daily_habit/core/theme/app_theme.dart';
 import 'package:daily_habit/core/widgets/ad_banner_widget.dart';
 import 'package:daily_habit/core/widgets/habit_card.dart';
@@ -23,6 +24,7 @@ import 'package:daily_habit/features/planner/presentation/widgets/calendar_heade
 import 'package:daily_habit/features/planner/presentation/widgets/daily_reflection_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:daily_habit/core/di/injection_container.dart';
@@ -1106,10 +1108,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      reflection.memorableNotes,
-                      style: AppTheme.textTheme.bodyMedium,
-                    ),
+                    _buildQuillViewer(reflection.memorableNotes),
                   ],
                 ],
               ],
@@ -1118,6 +1117,32 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  Widget _buildQuillViewer(String content) {
+    if (content.trim().isEmpty) return const SizedBox.shrink();
+    try {
+      final json = jsonDecode(content);
+      final doc = Document.fromJson(json);
+      final controller = QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+      return IgnorePointer(
+        child: QuillEditor.basic(
+          controller: controller,
+          config: const QuillEditorConfig(
+            showCursor: false,
+            enableInteractiveSelection: false,
+          ),
+        ),
+      );
+    } catch (_) {
+      return Text(
+        content,
+        style: AppTheme.textTheme.bodyMedium,
+      );
+    }
   }
 
   Widget _buildTaskTile(PlannerTaskEntity task) {

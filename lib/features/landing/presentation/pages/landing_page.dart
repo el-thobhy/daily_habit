@@ -26,9 +26,9 @@ class _LandingPageState extends State<LandingPage> {
         (route) => false,
       );
     } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
@@ -141,7 +141,10 @@ class _LandingPageState extends State<LandingPage> {
               if (isDesktop) {
                 return Row(
                   children: [
-                    _navLink('Fitur', onTap: () => _scrollToSection(_featuresKey)),
+                    _navLink(
+                      'Fitur',
+                      onTap: () => _scrollToSection(_featuresKey),
+                    ),
                     _navLink(
                       'Keunggulan',
                       onTap: () => _scrollToSection(_statsKey),
@@ -183,7 +186,9 @@ class _LandingPageState extends State<LandingPage> {
                         : Icons.person_rounded,
                     color: AppTheme.primary,
                   ),
-                  tooltip: isAuthenticated ? 'Buka App / Dashboard' : 'Login / Masuk',
+                  tooltip: isAuthenticated
+                      ? 'Buka App / Dashboard'
+                      : 'Login / Masuk',
                 );
               }
             },
@@ -245,7 +250,7 @@ class _LandingPageState extends State<LandingPage> {
     return Column(
       crossAxisAlignment: isDesktop
           ? CrossAxisAlignment.start
-          : CrossAlignmentCenter(isDesktop),
+          : crossAlignmentCenter(isDesktop),
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -347,7 +352,7 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  static CrossAxisAlignment CrossAlignmentCenter(bool isDesktop) =>
+  static CrossAxisAlignment crossAlignmentCenter(bool isDesktop) =>
       isDesktop ? CrossAxisAlignment.start : CrossAxisAlignment.center;
 
   Widget _buildHeroPreviewCard() {

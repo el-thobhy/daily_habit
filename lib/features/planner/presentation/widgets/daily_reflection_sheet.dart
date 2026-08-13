@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:daily_habit/core/theme/app_theme.dart';
 import 'package:daily_habit/features/planner/domain/entities/daily_reflection_entity.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:uuid/uuid.dart';
 
 class DailyReflectionSheet extends StatefulWidget {
@@ -21,7 +23,9 @@ class DailyReflectionSheet extends StatefulWidget {
 
 class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
   late TextEditingController _lessonController;
-  late TextEditingController _notesController;
+  late QuillController _quillController;
+  final FocusNode _editorFocusNode = FocusNode();
+  final ScrollController _editorScrollController = ScrollController();
   int _moodRating = 5;
 
   @override
@@ -30,25 +34,46 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
     _lessonController = TextEditingController(
       text: widget.existingReflection?.todayLesson ?? '',
     );
-    _notesController = TextEditingController(
-      text: widget.existingReflection?.memorableNotes ?? '',
-    );
+    _quillController = _initQuillController(widget.existingReflection?.memorableNotes);
     _moodRating = widget.existingReflection?.moodRating ?? 5;
+  }
+
+  QuillController _initQuillController(String? content) {
+    if (content == null || content.trim().isEmpty) {
+      return QuillController.basic();
+    }
+    try {
+      final json = jsonDecode(content);
+      return QuillController(
+        document: Document.fromJson(json),
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    } catch (_) {
+      final doc = Document()..insert(0, content);
+      return QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
   }
 
   @override
   void dispose() {
     _lessonController.dispose();
-    _notesController.dispose();
+    _quillController.dispose();
+    _editorFocusNode.dispose();
+    _editorScrollController.dispose();
     super.dispose();
   }
 
   void _submit() {
+    final notesDeltaJson = jsonEncode(_quillController.document.toDelta().toJson());
+
     final reflection = DailyReflectionEntity(
       id: widget.existingReflection?.id ?? const Uuid().v4(),
       date: widget.date,
       todayLesson: _lessonController.text.trim(),
-      memorableNotes: _notesController.text.trim(),
+      memorableNotes: notesDeltaJson,
       moodRating: _moodRating,
     );
 
@@ -118,24 +143,41 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Catatan Berkesan Hari Ini',
+                'Catatan Berkesan Hari Ini (Rich Text)',
                 style: AppTheme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 6),
-              TextField(
-                controller: _notesController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText:
-                      'Momen atau ucapan syukur apa yang terjadi hari ini?',
-                  filled: true,
-                  fillColor: AppTheme.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Column(
+                  children: [
+                    QuillSimpleToolbar(
+                      controller: _quillController,
+                      config: const QuillSimpleToolbarConfig(
+                        showSmallButton: true,
+                        showInlineCode: false,
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppTheme.border),
+                    Container(
+                      height: 150,
+                      padding: const EdgeInsets.all(12),
+                      child: QuillEditor.basic(
+                        controller: _quillController,
+                        scrollController: _editorScrollController,
+                        focusNode: _editorFocusNode,
+                        config: const QuillEditorConfig(
+                          placeholder: 'Momen atau ucapan syukur apa yang terjadi hari ini...',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -192,7 +234,7 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primary.withOpacity(0.15)
+              ? AppTheme.primary.withValues(alpha: 0.15)
               : AppTheme.background,
           shape: BoxShape.circle,
           border: isSelected

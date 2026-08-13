@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
@@ -45,6 +47,13 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Daily Planner',
         debugShowCheckedModeBanner: false,
+        localizationsDelegates: const [
+          FlutterQuillLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: FlutterQuillLocalizations.supportedLocales,
         theme: ThemeData(
           useMaterial3: true,
           scaffoldBackgroundColor: AppTheme.background,
