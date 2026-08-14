@@ -330,22 +330,6 @@ class _LandingPageState extends State<LandingPage> {
                 );
               },
             ),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.play_circle_fill_rounded),
-              label: const Text('Lihat Demo'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.textPrimary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 18,
-                ),
-                side: const BorderSide(color: AppTheme.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
           ],
         ),
       ],

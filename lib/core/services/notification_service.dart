@@ -15,7 +15,9 @@ class NotificationService {
 
   Future<void> init() async {
     if (kIsWeb) {
-      debugPrint('Web platform detected, skipping local notification & timezone initialization.');
+      debugPrint(
+        'Web platform detected, skipping local notification & timezone initialization.',
+      );
       return;
     }
 
@@ -38,7 +40,7 @@ class NotificationService {
     }
 
     const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      '@mipmap/launcher_icon',
     );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -181,7 +183,9 @@ class NotificationService {
       if (canExact == false) {
         scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
       }
-      debugPrint('🔍 canScheduleExactNotifications: $canExact | Using scheduleMode: $scheduleMode');
+      debugPrint(
+        '🔍 canScheduleExactNotifications: $canExact | Using scheduleMode: $scheduleMode',
+      );
 
       const androidDetails = AndroidNotificationDetails(
         'planner_task_channel',
@@ -245,9 +249,13 @@ class NotificationService {
       );
       debugPrint(' Notifikasi tes instan terkirim.');
 
-      final testScheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10));
-      debugPrint('⏰ Memasang tes scheduled (10 detik) untuk: $testScheduledDate');
-      
+      final testScheduledDate = tz.TZDateTime.now(
+        tz.local,
+      ).add(const Duration(seconds: 10));
+      debugPrint(
+        '⏰ Memasang tes scheduled (10 detik) untuk: $testScheduledDate',
+      );
+
       await _notificationsPlugin.zonedSchedule(
         998,
         '🧪 Tes Scheduled (10 Detik)',
