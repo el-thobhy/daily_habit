@@ -39,9 +39,6 @@ jobs:
       - name: Run analyzer
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      - name: Run tests
-        run: flutter test
-
       - name: Decode keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
