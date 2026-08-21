@@ -1,0 +1,102 @@
+name: Deploy to Play Store
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v1.0.0, v1.2.3+5
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+env:
+  FLUTTER_VERSION: '3.44.2'
+  JAVA_VERSION: '17'
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy to Play Store
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run analyzer
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "Base64 secret length: ${#KEYSTORE_B64}"
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "ERROR: KEYSTORE_BASE64 secret is empty or not set!"
+            exit 1
+          fi
+          # Write base64 to temp file first, then decode
+          printf '%s' "$KEYSTORE_B64" > /tmp/keystore_b64.txt
+          base64 --decode /tmp/keystore_b64.txt > android/app/upload-keystore.jks
+          rm /tmp/keystore_b64.txt
+          echo "Decoded keystore size: $(wc -c < android/app/upload-keystore.jks) bytes"
+
+      - name: Verify keystore file
+        env:
+          STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "Keystore file size:"
+          ls -la android/app/upload-keystore.jks
+          echo "Verifying keystore with keytool:"
+          keytool -list -keystore android/app/upload-keystore.jks -storetype PKCS12 -storepass "$STORE_PASS" -alias "$KEY_ALIAS_VAL"
+
+      - name: Create key.properties
+        env:
+          STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.KEY_ALIAS }}
+        run: |
+          {
+            echo "storePassword=$STORE_PASS"
+            echo "keyPassword=$KEY_PASS"
+            echo "keyAlias=$KEY_ALIAS_VAL"
+            echo "storeFile=upload-keystore.jks"
+          } > android/key.properties
+          echo "--- key.properties (masked) ---"
+          sed 's/Password=.*/Password=***/' android/key.properties
+
+      - name: Build App Bundle
+        run: flutter build appbundle --release
+
+      - name: Upload App Bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bundle
+          path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Deploy to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          packageName: com.elthobhy.daily_habit
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
+          whatsNewDirectory: distribution/whatsnew
