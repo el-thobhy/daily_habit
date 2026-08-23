@@ -28,6 +28,8 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
   final ScrollController _editorScrollController = ScrollController();
   int _moodRating = 5;
 
+  bool _isFullScreen = false;
+
   @override
   void initState() {
     super.initState();
@@ -85,91 +87,93 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
     Navigator.pop(context);
   }
 
-  void _openFullscreenEditor() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (fullscreenContext) => Scaffold(
-          backgroundColor: AppTheme.surface,
-          appBar: AppBar(
-            backgroundColor: AppTheme.surface,
-            elevation: 0,
-            title: const Text(
-              'Catatan Berkesan Hari Ini',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            leading: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(fullscreenContext),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: TextButton.icon(
-                  onPressed: () => Navigator.pop(fullscreenContext),
-                  icon: const Icon(Icons.check, color: AppTheme.primary),
-                  label: const Text(
-                    'Selesai',
-                    style: TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          body: SafeArea(
-            child: Column(
-              children: [
-                Container(
-                  color: AppTheme.background,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: QuillSimpleToolbar(
-                      controller: _quillController,
-                      config: const QuillSimpleToolbarConfig(
-                        toolbarIconAlignment: WrapAlignment.start,
-                        toolbarIconCrossAlignment: WrapCrossAlignment.center,
-                        axis: Axis.horizontal,
-                        showSmallButton: true,
-                        showInlineCode: false,
-                      ),
-                    ),
-                  ),
-                ),
-                const Divider(height: 1, color: AppTheme.border),
-                Expanded(
-                  child: Container(
-                    color: AppTheme.background,
-                    padding: const EdgeInsets.all(16),
-                    child: QuillEditor.basic(
-                      controller: _quillController,
-                      scrollController: ScrollController(),
-                      focusNode: FocusNode(),
-                      config: const QuillEditorConfig(
-                        placeholder:
-                            'Momen atau ucapan syukur apa yang terjadi hari ini...',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullScreen = !_isFullScreen;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    final mediaQuery = MediaQuery.of(context);
+    final isWide = mediaQuery.size.width > 600;
+
+    if (_isFullScreen) {
+      return Scaffold(
+        backgroundColor: AppTheme.surface,
+        appBar: AppBar(
+          backgroundColor: AppTheme.surface,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            onPressed: _toggleFullscreen,
+            icon: const Icon(Icons.fullscreen_exit),
+            tooltip: 'Keluar Fullscreen',
+          ),
+          title: Text(
+            'Catatan Berkesan Hari Ini',
+            style: AppTheme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              onPressed: _submit,
+              icon: const Icon(Icons.check, color: AppTheme.primary),
+              tooltip: 'Simpan',
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            const Divider(height: 1, color: AppTheme.border),
+            Container(
+              color: AppTheme.background,
+              width: double.infinity,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: QuillSimpleToolbar(
+                  controller: _quillController,
+                  config: const QuillSimpleToolbarConfig(
+                    toolbarIconAlignment: WrapAlignment.start,
+                    toolbarIconCrossAlignment: WrapCrossAlignment.center,
+                    axis: Axis.horizontal,
+                    showSmallButton: true,
+                    showInlineCode: false,
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: AppTheme.border),
+            Expanded(
+              child: Container(
+                color: AppTheme.background,
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                child: QuillEditor.basic(
+                  controller: _quillController,
+                  scrollController: _editorScrollController,
+                  focusNode: _editorFocusNode,
+                  config: const QuillEditorConfig(
+                    placeholder:
+                        'Momen atau ucapan syukur apa yang terjadi hari ini...',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget sheetContent = SafeArea(
       child: Container(
         padding: EdgeInsets.only(
           left: 24,
           right: 24,
           top: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          bottom: mediaQuery.viewInsets.bottom + 24,
         ),
         decoration: const BoxDecoration(
           color: AppTheme.surface,
@@ -231,15 +235,34 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  IconButton(
-                    onPressed: _openFullscreenEditor,
-                    icon: const Icon(
-                      Icons.fullscreen,
-                      color: AppTheme.primary,
+                  InkWell(
+                    onTap: _toggleFullscreen,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.fullscreen,
+                            color: AppTheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Fullscreen',
+                            style: AppTheme.textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    tooltip: 'Tampilan Fullscreen',
-                    constraints: const BoxConstraints(),
-                    padding: EdgeInsets.zero,
                   ),
                 ],
               ),
@@ -325,6 +348,17 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
         ),
       ),
     );
+
+    if (isWide) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Material(color: Colors.transparent, child: sheetContent),
+        ),
+      );
+    }
+
+    return sheetContent;
   }
 
   Widget _buildMoodIcon(int value, String emoji) {

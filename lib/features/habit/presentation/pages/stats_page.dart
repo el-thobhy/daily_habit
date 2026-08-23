@@ -61,10 +61,12 @@ class _StatsView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios, color: AppTheme.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Text(
           'Statistics',
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
@@ -102,7 +104,10 @@ class _StatsView extends StatelessWidget {
               context.read<HabitStatsBloc>().add(LoadHabitStatsEvent());
             },
             color: AppTheme.primary,
-            child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -355,10 +360,12 @@ class _StatsView extends StatelessWidget {
                 ],
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   Widget _buildSummaryCard(
@@ -422,11 +429,12 @@ class _StatsView extends StatelessWidget {
   }
 
   BarChartGroupData _buildBarGroup(int x, double y, Color color) {
+    final validY = y.isNaN || y.isInfinite ? 0.0 : y.clamp(0.0, 100.0);
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
-          toY: y,
+          toY: validY,
           color: color,
           width: 22,
           borderRadius: BorderRadius.circular(6),

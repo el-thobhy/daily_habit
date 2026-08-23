@@ -47,7 +47,7 @@ class HabitStatsBloc extends Bloc<HabitStatsEvent, HabitStatsState> {
 
       final weekStart = now.subtract(Duration(days: now.weekday - 1));
       final weekStats = repository.getStatsForRange(weekStart, now);
-      final completionRate = (weekStats['rate'] as int).toDouble();
+      final completionRate = (weekStats['rate'] as num?)?.toDouble() ?? 0.0;
 
       emit(HabitStatsLoaded(
         habits: habits,

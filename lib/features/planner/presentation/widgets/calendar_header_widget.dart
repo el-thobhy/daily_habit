@@ -89,7 +89,12 @@ class _CalendarHeaderWidgetState extends State<CalendarHeaderWidget> {
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
-          titleTextStyle: AppTheme.textTheme.titleLarge!,
+          titleTextStyle: AppTheme.textTheme.titleLarge ??
+              const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
         ),
       ),
     );

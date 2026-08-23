@@ -72,28 +72,44 @@ class _HomePageState extends State<HomePage> {
     _loadDataForSelectedDate(date);
   }
 
+  Widget _wrapSheetForWideScreen(Widget sheet) {
+    final isWide = MediaQuery.of(context).size.width > 600;
+    if (!isWide) return sheet;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Material(
+          color: Colors.transparent,
+          child: sheet,
+        ),
+      ),
+    );
+  }
+
   void _showAddHabitSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddHabitSheet(
-        onSave: (data) {
-          final habit = HabitEntity(
-            id: _uuid.v4(),
-            name: data['name'],
-            emoji: data['emoji'],
-            colorValue: data['colorValue'],
-            frequency: data['frequency'],
-            reminderTime: data['reminderTime'],
-            targetCount: data['targetCount'] ?? 1,
-            unit: data['unit'],
-            categoryId: data['categoryId'],
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-          context.read<HabitListBloc>().add(AddHabitEvent(habit));
-        },
+      builder: (context) => _wrapSheetForWideScreen(
+        AddHabitSheet(
+          onSave: (data) {
+            final habit = HabitEntity(
+              id: _uuid.v4(),
+              name: data['name'],
+              emoji: data['emoji'],
+              colorValue: data['colorValue'],
+              frequency: data['frequency'],
+              reminderTime: data['reminderTime'],
+              targetCount: data['targetCount'] ?? 1,
+              unit: data['unit'],
+              categoryId: data['categoryId'],
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+            context.read<HabitListBloc>().add(AddHabitEvent(habit));
+          },
+        ),
       ),
     );
   }
@@ -103,22 +119,24 @@ class _HomePageState extends State<HomePage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddHabitSheet(
-        habit: habit,
-        onSave: (data) {
-          final updated = habit.copyWith(
-            name: data['name'],
-            emoji: data['emoji'],
-            colorValue: data['colorValue'],
-            frequency: data['frequency'],
-            reminderTime: data['reminderTime'],
-            targetCount: data['targetCount'] ?? 1,
-            unit: data['unit'],
-            categoryId: data['categoryId'],
-            updatedAt: DateTime.now(),
-          );
-          context.read<HabitListBloc>().add(UpdateHabitEvent(updated));
-        },
+      builder: (context) => _wrapSheetForWideScreen(
+        AddHabitSheet(
+          habit: habit,
+          onSave: (data) {
+            final updated = habit.copyWith(
+              name: data['name'],
+              emoji: data['emoji'],
+              colorValue: data['colorValue'],
+              frequency: data['frequency'],
+              reminderTime: data['reminderTime'],
+              targetCount: data['targetCount'] ?? 1,
+              unit: data['unit'],
+              categoryId: data['categoryId'],
+              updatedAt: DateTime.now(),
+            );
+            context.read<HabitListBloc>().add(UpdateHabitEvent(updated));
+          },
+        ),
       ),
     );
   }
@@ -233,11 +251,13 @@ class _HomePageState extends State<HomePage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddPlannerTaskSheet(
-        selectedDate: _selectedDate,
-        onTaskAdded: (task) {
-          context.read<PlannerBloc>().add(AddPlannerTaskEvent(task));
-        },
+      builder: (context) => _wrapSheetForWideScreen(
+        AddPlannerTaskSheet(
+          selectedDate: _selectedDate,
+          onTaskAdded: (task) {
+            context.read<PlannerBloc>().add(AddPlannerTaskEvent(task));
+          },
+        ),
       ),
     );
   }
@@ -245,25 +265,21 @@ class _HomePageState extends State<HomePage> {
   void _showReflectionSheet(DailyReflectionEntity? existing) {
     showModalBottomSheet(
       context: context,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
-      builder: (context) => PopScope(
-        canPop: false,
-        child: GestureDetector(
-          onTap: () {},
-          child: DailyReflectionSheet(
-            date: _selectedDate,
-            existingReflection: existing,
-            onSave: (reflection) {
-              context.read<ReflectionBloc>().add(
-                SaveReflectionEvent(reflection),
-              );
-            },
-          ),
-        ),
+      constraints: const BoxConstraints(maxWidth: double.infinity),
+      builder: (context) => DailyReflectionSheet(
+        date: _selectedDate,
+        existingReflection: existing,
+        onSave: (reflection) {
+          context.read<ReflectionBloc>().add(
+            SaveReflectionEvent(reflection),
+          );
+        },
       ),
     );
   }
@@ -468,7 +484,6 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           const SizedBox(width: 24),
-                          const AdBannerWidget(),
                           // Right Column: Habits & Tasks
                           Expanded(
                             flex: 6,
