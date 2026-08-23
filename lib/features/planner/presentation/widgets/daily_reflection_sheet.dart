@@ -85,6 +85,82 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
     Navigator.pop(context);
   }
 
+  void _openFullscreenEditor() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (fullscreenContext) => Scaffold(
+          backgroundColor: AppTheme.surface,
+          appBar: AppBar(
+            backgroundColor: AppTheme.surface,
+            elevation: 0,
+            title: const Text(
+              'Catatan Berkesan Hari Ini',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(fullscreenContext),
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: TextButton.icon(
+                  onPressed: () => Navigator.pop(fullscreenContext),
+                  icon: const Icon(Icons.check, color: AppTheme.primary),
+                  label: const Text(
+                    'Selesai',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                Container(
+                  color: AppTheme.background,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: QuillSimpleToolbar(
+                      controller: _quillController,
+                      config: const QuillSimpleToolbarConfig(
+                        toolbarIconAlignment: WrapAlignment.start,
+                        toolbarIconCrossAlignment: WrapCrossAlignment.center,
+                        axis: Axis.horizontal,
+                        showSmallButton: true,
+                        showInlineCode: false,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: AppTheme.border),
+                Expanded(
+                  child: Container(
+                    color: AppTheme.background,
+                    padding: const EdgeInsets.all(16),
+                    child: QuillEditor.basic(
+                      controller: _quillController,
+                      scrollController: ScrollController(),
+                      focusNode: FocusNode(),
+                      config: const QuillEditorConfig(
+                        placeholder:
+                            'Momen atau ucapan syukur apa yang terjadi hari ini...',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -146,11 +222,26 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Catatan Berkesan Hari Ini (Rich Text)',
-                style: AppTheme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Catatan Berkesan Hari Ini',
+                    style: AppTheme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _openFullscreenEditor,
+                    icon: const Icon(
+                      Icons.fullscreen,
+                      color: AppTheme.primary,
+                    ),
+                    tooltip: 'Tampilan Fullscreen',
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               Container(
